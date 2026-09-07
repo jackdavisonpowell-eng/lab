@@ -11,4 +11,4 @@
 # Moods: idle listening thinking speaking happy sad alert surprised sleepy focus error off
 cd "$(dirname "$0")" || exit 1
 PORT="${LAB_PORT:-8122}"
-exec python3 -m http.server "$PORT" --bind 127.0.0.1
+exec python3 -m http.server "$PORT" --bind "${LAB_BIND:-127.0.0.1}"

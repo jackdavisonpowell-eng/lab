@@ -31,6 +31,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 PORT = int(os.environ.get("LAPBOARD_PORT", "8125"))
+BIND = os.environ.get("LAB_BIND", "127.0.0.1")
 HERE = os.path.dirname(os.path.abspath(__file__))
 LAPS = os.path.join(HERE, "laps.json")
 TRACK = os.path.join(HERE, "track.json")
@@ -197,6 +198,6 @@ class H(BaseHTTPRequestHandler):
 if __name__ == "__main__":
     if not os.path.exists(LAPS):
         _save([])
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), H)
-    print(f"lapboard on http://127.0.0.1:{PORT}/ (laps: {LAPS})")
+    srv = ThreadingHTTPServer((BIND, PORT), H)
+    print(f"lapboard on http://{BIND}:{PORT}/ (laps: {LAPS})")
     srv.serve_forever()

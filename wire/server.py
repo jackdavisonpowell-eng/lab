@@ -21,6 +21,7 @@ BRIEF_DIR = Path(os.environ.get("AUTOGOD_VAULT", os.path.expanduser("~/vault")))
 BRIEF_RE = re.compile(r"^AUTOGOD brief (\d{4}-\d{2}-\d{2})\.md$")
 HERE = Path(__file__).resolve().parent
 PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8135
+BIND = os.environ.get("LAB_BIND", "127.0.0.1")
 
 
 def brief_index():
@@ -87,8 +88,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    sys.stderr.write(f"wire: on air at http://127.0.0.1:{PORT}/ "
+    srv = ThreadingHTTPServer((BIND, PORT), Handler)
+    sys.stderr.write(f"wire: on air at http://{BIND}:{PORT}/ "
                      f"(briefs from {BRIEF_DIR})\n")
     srv.serve_forever()
 

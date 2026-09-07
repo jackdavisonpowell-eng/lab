@@ -24,6 +24,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 VAULT = os.environ.get("AUTOGOD_VAULT", os.path.expanduser("~/vault"))
 JOURNAL_DIR = os.path.join(VAULT, "AUTOGOD", "journal")
 PORT = 8136
+BIND = os.environ.get("LAB_BIND", "127.0.0.1")
 TICK_MIN = 15
 HORIZON_H = 24
 
@@ -372,8 +373,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"TAPE exchange open on http://127.0.0.1:{PORT}", flush=True)
+    srv = ThreadingHTTPServer((BIND, PORT), Handler)
+    print(f"TAPE exchange open on http://{BIND}:{PORT}", flush=True)
     srv.serve_forever()
 
 

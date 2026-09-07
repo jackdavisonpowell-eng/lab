@@ -19,6 +19,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 STATE_PATH = os.path.join(HERE, "state.json")
 INDEX_PATH = os.path.join(HERE, "index.html")
 PORT = 8126
+BIND = os.environ.get("LAB_BIND", "127.0.0.1")
 START_RATING = 1000
 K = 32
 
@@ -191,6 +192,6 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"ladder on http://127.0.0.1:{PORT}/")
+    srv = ThreadingHTTPServer((BIND, PORT), Handler)
+    print(f"ladder on http://{BIND}:{PORT}/")
     srv.serve_forever()

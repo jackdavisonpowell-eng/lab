@@ -13,6 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 PORT = int(os.environ.get("THEBEAST_PORT", "8117"))
+BIND = os.environ.get("LAB_BIND", "127.0.0.1")
 
 
 def _read_uptime():
@@ -162,8 +163,8 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    srv = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"thebeast listening on http://127.0.0.1:{PORT}/", flush=True)
+    srv = ThreadingHTTPServer((BIND, PORT), Handler)
+    print(f"thebeast listening on http://{BIND}:{PORT}/", flush=True)
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

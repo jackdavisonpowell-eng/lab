@@ -5,4 +5,4 @@ set -euo pipefail
 cd "$(dirname "$0")"
 PORT="${LAB_PORT:-8139}"
 echo "MANIFEST -> http://127.0.0.1:${PORT}/"
-exec python3 -m http.server "${PORT}" --bind 127.0.0.1
+exec python3 -m http.server "${PORT}" --bind "${LAB_BIND:-127.0.0.1}"
