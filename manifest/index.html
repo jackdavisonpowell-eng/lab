@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MANIFEST — dorm move-in</title>
+<style>
+  :root{
+    --bg:#0c0c0c; --panel:#131313; --line:#2a2a2a; --amber:#ffb000;
+    --amber-dim:#8a6100; --white:#f2f0ea; --dim:#8a8578; --buy:#c9c4b8;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  html,body{background:var(--bg); color:var(--white);
+    font-family:"Helvetica Neue",Arial,sans-serif; -webkit-font-smoothing:antialiased;}
+  body{padding:28px 22px 80px; max-width:1040px; margin:0 auto;}
+  .mono{font-family:"SFMono-Regular",Consolas,"Liberation Mono",Menlo,monospace;}
+  h1{font-style:italic; font-weight:800; font-size:52px; letter-spacing:-1px; line-height:.95;}
+  .tag{color:var(--dim); font-size:14px; margin-top:8px; letter-spacing:.3px;}
+  .bar{display:flex; align-items:center; gap:14px; margin-top:14px; flex-wrap:wrap;}
+  .bar label{font-size:11px; letter-spacing:2px; color:var(--dim); text-transform:uppercase;}
+  .bar input{background:transparent; border:none; border-bottom:1px solid var(--line);
+    color:var(--white); font-size:16px; padding:4px 2px; width:160px; outline:none;}
+  .bar input:focus{border-bottom-color:var(--amber);}
+
+  /* stats */
+  .stats{display:flex; gap:0; margin:26px 0 8px; border:1px solid var(--line);}
+  .stat{flex:1; padding:16px 18px; border-right:1px solid var(--line);}
+  .stat:last-child{border-right:none;}
+  .stat .n{font-size:46px; font-weight:800; line-height:1; font-style:italic;}
+  .stat .l{font-size:10px; letter-spacing:2.5px; color:var(--dim); text-transform:uppercase; margin-top:6px;}
+  .stat.have .n{color:var(--amber);}
+  .stat.buy .n{color:var(--buy);}
+
+  /* toolbar */
+  .tools{display:flex; gap:8px; margin:22px 0 18px; flex-wrap:wrap;}
+  button{cursor:pointer; font-family:inherit; font-size:12px; letter-spacing:1.5px;
+    text-transform:uppercase; background:transparent; color:var(--white);
+    border:1px solid var(--line); padding:10px 16px; transition:.12s;}
+  button:hover{border-color:var(--amber); color:var(--amber);}
+  button.primary{border-color:var(--amber); color:var(--amber);}
+  button.danger:hover{border-color:#ff5a3c; color:#ff5a3c;}
+  button:active{transform:translateY(1px);}
+
+  /* holds */
+  .hold{border:1px solid var(--line); margin-bottom:14px; background:var(--panel);}
+  .hold-h{display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; border-bottom:1px solid var(--line);
+    background:repeating-linear-gradient(45deg,transparent,transparent 6px,#1a1a1a 6px,#1a1a1a 7px);}
+  .hold-h .name{font-size:13px; letter-spacing:2.5px; text-transform:uppercase; font-weight:700;}
+  .hold-h .count{font-size:11px; color:var(--dim); letter-spacing:1px;}
+  .hold-h .delhold{font-size:11px; padding:4px 10px;}
+  .items{padding:6px 0;}
+  .item{display:flex; align-items:center; gap:10px; padding:8px 16px; border-bottom:1px solid #1c1c1c;}
+  .item:last-child{border-bottom:none;}
+  .item .nm{flex:1; font-size:15px;}
+  .item .nm.have{color:var(--amber);}
+  .item .nm.buy{color:var(--buy);}
+  .item .nm.need{color:var(--white); opacity:.85;}
+  .states{display:flex; gap:4px;}
+  .st{font-size:10px; letter-spacing:1px; padding:5px 9px; border:1px solid var(--line);
+    color:var(--dim); text-transform:uppercase;}
+  .st.on-h{border-color:var(--amber); color:var(--amber); background:rgba(255,176,0,.08);}
+  .st.on-n{border-color:var(--white); color:var(--white); background:rgba(242,240,234,.06);}
+  .st.on-b{border-color:var(--buy); color:var(--buy); background:rgba(201,196,184,.06);}
+  .del{border:none; color:var(--dim); font-size:16px; padding:2px 8px; line-height:1;}
+  .del:hover{color:#ff5a3c; border-color:transparent;}
+
+  /* add form */
+  .add{display:flex; gap:8px; margin:18px 0 30px; flex-wrap:wrap;}
+  .add input,.add select{background:var(--panel); border:1px solid var(--line);
+    color:var(--white); padding:11px 12px; font-size:14px; font-family:inherit; outline:none;}
+  .add input:focus,.add select:focus{border-color:var(--amber);}
+  .add input{flex:1; min-width:180px;}
+
+  /* modal */
+  .overlay{position:fixed; inset:0; background:rgba(0,0,0,.72); display:none;
+    align-items:flex-start; justify-content:center; padding:40px 16px; overflow:auto; z-index:50;}
+  .overlay.open{display:flex;}
+  .modal{background:var(--panel); border:1px solid var(--line); width:100%; max-width:720px;}
+  .modal-h{display:flex; justify-content:space-between; align-items:center;
+    padding:14px 18px; border-bottom:1px solid var(--line);}
+  .modal-h .t{font-size:13px; letter-spacing:2.5px; text-transform:uppercase; font-weight:700;}
+  .modal-b{padding:18px;}
+  textarea{width:100%; background:#0a0a0a; border:1px solid var(--line); color:var(--white);
+    font-family:"SFMono-Regular",Consolas,Menlo,monospace; font-size:13px; padding:12px;
+    min-height:220px; resize:vertical; outline:none; line-height:1.5;}
+  textarea:focus{border-color:var(--amber);}
+  .modal-f{display:flex; gap:8px; margin-top:12px; flex-wrap:wrap;}
+  .hint{color:var(--dim); font-size:12px; margin:8px 0; line-height:1.5;}
+
+  /* diff result */
+  .diff-sec{margin-bottom:20px;}
+  .diff-sec h3{font-size:12px; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--amber); margin-bottom:10px; border-bottom:1px solid var(--line); padding-bottom:6px;}
+  .diff-sec h3 .c{color:var(--dim); font-weight:400; margin-left:8px;}
+  .row{display:flex; align-items:baseline; gap:10px; padding:6px 0; font-size:14px;
+    border-bottom:1px solid #1c1c1c;}
+  .row:last-child{border-bottom:none;}
+  .row .rn{flex:1;}
+  .row .rstate{font-size:11px; color:var(--dim); letter-spacing:.5px; font-family:monospace;}
+  .row.gap .rn{color:var(--buy);}
+  .empty{color:var(--dim); font-size:13px; font-style:italic; padding:4px 0;}
+  .badge{display:inline-block; font-size:9px; letter-spacing:1px; padding:2px 6px;
+    border:1px solid var(--line); color:var(--dim); margin-left:8px; text-transform:uppercase;}
+  .badge.h{border-color:var(--amber); color:var(--amber);}
+  .badge.b{border-color:var(--buy); color:var(--buy);}
+  .badge.n{border-color:var(--white); color:var(--white);}
+</style>
+</head>
+<body>
+  <h1>MANIFEST</h1>
+  <div class="tag">the cargo manifest for your dorm move-in. text it to your roommate, diff the overlap, find the gaps.</div>
+  <div class="bar">
+    <label for="owner">owner</label>
+    <input id="owner" placeholder="your name" autocomplete="off">
+  </div>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-total">0</div><div class="l">total</div></div>
+    <div class="stat have"><div class="n" id="s-have">0</div><div class="l">have</div></div>
+    <div class="stat"><div class="n" id="s-need">0</div><div class="l">need</div></div>
+    <div class="stat buy"><div class="n" id="s-buy">0</div><div class="l">buy</div></div>
+  </div>
+
+  <div class="tools">
+    <button class="primary" id="btn-export">export manifest</button>
+    <button id="btn-import">import</button>
+    <button id="btn-diff">roommate diff</button>
+    <button id="btn-sample">load sample</button>
+    <button class="danger" id="btn-clear">clear all</button>
+  </div>
+
+  <div id="holds"></div>
+
+  <div class="add">
+    <input id="new-item" placeholder="add an item — e.g. twin sheet set" autocomplete="off">
+    <select id="new-hold"></select>
+    <button class="primary" id="btn-add">add</button>
+  </div>
+
+  <!-- EXPORT -->
+  <div class="overlay" id="ov-export">
+    <div class="modal">
+      <div class="modal-h"><span class="t">manifest — copy &amp; text it</span>
+        <button class="del" data-close="ov-export">&times;</button></div>
+      <div class="modal-b">
+        <div class="hint">Round-trippable. Paste it back into <b>import</b>, or hand it to your roommate for the diff.</div>
+        <textarea id="export-text" readonly></textarea>
+        <div class="modal-f">
+          <button class="primary" id="btn-copy">copy to clipboard</button>
+          <button id="btn-download">download .txt</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPORT -->
+  <div class="overlay" id="ov-import">
+    <div class="modal">
+      <div class="modal-h"><span class="t">import a manifest</span>
+        <button class="del" data-close="ov-import">&times;</button></div>
+      <div class="modal-b">
+        <div class="hint">Paste a manifest (yours from another device, or a roommate's). This <b>replaces</b> the current list.</div>
+        <textarea id="import-text" placeholder="# MANIFEST Priya&#10;## Bedding&#10;[have] twin sheet set&#10;[buy] pillow"></textarea>
+        <div class="modal-f">
+          <button class="primary" id="btn-do-import">import</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIFF -->
+  <div class="overlay" id="ov-diff">
+    <div class="modal">
+      <div class="modal-h"><span class="t">roommate diff</span>
+        <button class="del" data-close="ov-diff">&times;</button></div>
+      <div class="modal-b">
+        <div class="hint">Paste your roommate's manifest. I'll flag <b>duplicates</b> (you're both getting it — one of you can stop) and <b>gaps</b> (standard dorm kit nobody's got).</div>
+        <textarea id="diff-text" placeholder="# MANIFEST Priya&#10;## Bedding&#10;[have] twin sheet set&#10;[buy] pillow"></textarea>
+        <div class="modal-f">
+          <button class="primary" id="btn-do-diff">run diff</button>
+        </div>
+        <div id="diff-out" style="margin-top:20px;"></div>
+      </div>
+    </div>
+  </div>
+
+<script>
+"use strict";
+const STORE_KEY = "manifest.v1";
+const STATES = ["have","need","buy"];
+const DEFAULT_HOLDS = ["Bedding","Kitchen","Cleaning","Electronics","Furniture","Toiletries","Decor","Misc"];
+const KIT = [
+  "trash can","trash bags","shower caddy","bath towel","hand towel","toiletries",
+  "laundry detergent","laundry bag","hair dryer","phone charger","extension cord",
+  "desk lamp","hangers","scissors","tape","sewing kit","first aid kit","medicine",
+  "broom","mop","dustpan","plunger","measuring tape","notebook","pens","flashlight"
+];
+const KIT_UNIQUE = Array.from(new Set(KIT));
+
+let state = { name:"", holds:[] };
+
+function uid(){ return Math.random().toString(36).slice(2,9); }
+function norm(s){ return (s||"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim(); }
+
+function defaultState(){
+  const holds = DEFAULT_HOLDS.map(n=>({id:uid(), name:n, items:[]}));
+  return { name:"", holds };
+}
+
+function sampleState(){
+  const h = {
+    "Bedding":[["have","twin sheet set"],["buy","pillow"],["need","comforter"],["have","twin pillow"]],
+    "Kitchen":[["buy","mug"],["need","cutting board"],["buy","trash can"]],
+    "Cleaning":[["buy","trash bags"],["need","all purpose cleaner"]],
+    "Electronics":[["have","phone charger"],["buy","desk lamp"],["need","extension cord"]],
+    "Toiletries":[["have","toothbrush"],["buy","shower caddy"]],
+    "Misc":[["buy","tape"],["need","scissors"]]
+  };
+  const holds = DEFAULT_HOLDS.map(n=>({
+    id:uid(), name:n,
+    items:(h[n]||[]).map(([s,name])=>({id:uid(), name, state:s}))
+  }));
+  return { name:"", holds };
+}
+
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw){ const p = JSON.parse(raw); if(p && p.holds){ state = p; return; } }
+  }catch(e){}
+  state = defaultState();
+}
+
+// ---- manifest text ----
+function toManifest(s){
+  let out = "# MANIFEST " + (s.name || "you");
+  for(const h of s.holds){
+    if(!h.items.length) continue;
+    out += "\n## " + h.name;
+    for(const it of h.items) out += "\n[" + it.state + "] " + it.name;
+  }
+  return out;
+}
+function parseManifest(text){
+  const holds = []; let cur = null, name = "";
+  for(let line of (text||"").split(/\r?\n/)){
+    const t = line.trim();
+    if(!t) continue;
+    if(t.startsWith("# MANIFEST")){ name = t.replace(/^#\s*MANIFEST\s*/i,"").trim(); continue; }
+    if(t.startsWith("## ")){ cur = { name:t.slice(3).trim(), items:[] }; holds.push(cur); continue; }
+    const m = t.match(/^\[(have|need|buy)\]\s*(.+)$/i);
+    if(m){
+      if(!cur){ cur = { name:"Imported", items:[] }; holds.push(cur); }
+      cur.items.push({ name:m[2].trim(), state:m[1].toLowerCase() });
+    }
+  }
+  return { name, holds };
+}
+
+// ---- diff ----
+function diff(manifest, roommate){
+  const mine = {}, theirs = {};
+  for(const h of manifest.holds) for(const it of h.items){
+    const k = norm(it.name); if(k) mine[k] = { name:it.name, state:it.state };
+  }
+  for(const h of roommate.holds) for(const it of h.items){
+    const k = norm(it.name); if(k) theirs[k] = { name:it.name, state:it.state };
+  }
+  const both = [], mineOnly = [], theirsOnly = [];
+  for(const k in mine){
+    if(theirs[k]) both.push({ name:mine[k].name, me:mine[k].state, them:theirs[k].state });
+    else mineOnly.push(mine[k]);
+  }
+  for(const k in theirs) if(!mine[k]) theirsOnly.push(theirs[k]);
+  const gaps = KIT_UNIQUE.filter(k => !mine[norm(k)] && !theirs[norm(k)]);
+  return { both, mineOnly, theirsOnly, gaps };
+}
+
+// ---- render ----
+const $ = s => document.querySelector(s);
+function esc(s){ return (s||"").replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c])); }
+
+function render(){
+  // owner
+  $("#owner").value = state.name;
+  // stats
+  let total=0, have=0, need=0, buy=0;
+  for(const h of state.holds) for(const it of h.items){
+    total++;
+    if(it.state==="have") have++; else if(it.state==="need") need++; else buy++;
+  }
+  $("#s-total").textContent = total;
+  $("#s-have").textContent = have;
+  $("#s-need").textContent = need;
+  $("#s-buy").textContent = buy;
+  // holds
+  const wrap = $("#holds");
+  wrap.innerHTML = "";
+  for(const h of state.holds){
+    const el = document.createElement("div"); el.className = "hold";
+    const head = document.createElement("div"); head.className = "hold-h";
+    head.innerHTML = '<span class="name">'+esc(h.name)+'</span>'+
+      '<span class="count">'+h.items.length+'</span>'+
+      '<button class="delhold" data-hold="'+h.id+'">remove hold</button>';
+    el.appendChild(head);
+    const list = document.createElement("div"); list.className = "items";
+    if(!h.items.length){
+      list.innerHTML = '<div class="empty" style="padding:10px 16px;">empty — add items below</div>';
+    } else {
+      for(const it of h.items){
+        const row = document.createElement("div"); row.className = "item";
+        const nm = document.createElement("span"); nm.className = "nm "+it.state; nm.textContent = it.name;
+        const states = document.createElement("div"); states.className = "states";
+        for(const st of STATES){
+          const b = document.createElement("button");
+          b.className = "st" + (it.state===st ? " on-"+st[0] : "");
+          b.textContent = st;
+          b.onclick = ()=>{ it.state = st; save(); render(); };
+          states.appendChild(b);
+        }
+        const del = document.createElement("button"); del.className = "del"; del.textContent = "\u00d7";
+        del.title = "remove item";
+        del.onclick = ()=>{ h.items = h.items.filter(x=>x.id!==it.id); save(); render(); };
+        row.appendChild(nm); row.appendChild(states); row.appendChild(del);
+        list.appendChild(row);
+      }
+    }
+    el.appendChild(list);
+    wrap.appendChild(el);
+  }
+  // hold select for add form
+  const sel = $("#new-hold");
+  const cur = sel.value;
+  sel.innerHTML = "";
+  for(const h of state.holds){
+    const o = document.createElement("option"); o.value = h.id; o.textContent = h.name;
+    sel.appendChild(o);
+  }
+  if([...sel.options].some(o=>o.value===cur)) sel.value = cur;
+  // wire hold-remove
+  document.querySelectorAll(".delhold").forEach(b=>{
+    b.onclick = ()=>{
+      const id = b.getAttribute("data-hold");
+      const h = state.holds.find(x=>x.id===id);
+      if(h && h.items.length && !confirm('Remove hold "'+h.name+'" and its '+h.items.length+' item(s)?')) return;
+      state.holds = state.holds.filter(x=>x.id!==id);
+      save(); render();
+    };
+  });
+}
+
+// ---- modals ----
+function openOv(id){ $("#"+id).classList.add("open"); }
+function closeOv(id){ $("#"+id).classList.remove("open"); }
+document.querySelectorAll("[data-close]").forEach(b=>{
+  b.onclick = ()=> closeOv(b.getAttribute("data-close"));
+});
+document.querySelectorAll(".overlay").forEach(ov=>{
+  ov.addEventListener("click", e=>{ if(e.target===ov) ov.classList.remove("open"); });
+});
+
+// ---- actions ----
+$("#owner").addEventListener("input", e=>{ state.name = e.target.value; save(); });
+
+$("#btn-add").onclick = addFromForm;
+$("#new-item").addEventListener("keydown", e=>{ if(e.key==="Enter") addFromForm(); });
+function addFromForm(){
+  const inp = $("#new-item"); const name = inp.value.trim();
+  if(!name) return;
+  const hid = $("#new-hold").value;
+  const h = state.holds.find(x=>x.id===hid) || state.holds[0];
+  if(!h) return;
+  h.items.push({ id:uid(), name, state:"need" });
+  inp.value = "";
+  save(); render(); inp.focus();
+}
+
+$("#btn-export").onclick = ()=>{
+  $("#export-text").value = toManifest(state);
+  openOv("ov-export");
+};
+$("#btn-copy").onclick = ()=>{
+  const ta = $("#export-text");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(ta.value).then(()=>flash("#btn-copy","copied!"))
+      .catch(()=>{ ta.select(); document.execCommand("copy"); flash("#btn-copy","copied!"); });
+  } else { ta.select(); document.execCommand("copy"); flash("#btn-copy","copied!"); }
+};
+function flash(sel,txt){
+  const b = $(sel); const old = b.textContent; b.textContent = txt;
+  setTimeout(()=>{ b.textContent = old; }, 1200);
+}
+$("#btn-download").onclick = ()=>{
+  const blob = new Blob([$("#export-text").value], {type:"text/plain"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = (state.name||"manifest").replace(/\s+/g,"-").toLowerCase() + "-manifest.txt";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+};
+
+$("#btn-import").onclick = ()=>{ $("#import-text").value = ""; openOv("ov-import"); };
+$("#btn-do-import").onclick = ()=>{
+  const p = parseManifest($("#import-text").value);
+  if(!p.holds.length){ alert("No items found in that manifest."); return; }
+  if(!confirm("Replace current list with "+p.holds.reduce((n,h)=>n+h.items.length,0)+" imported items?")) return;
+  state.name = p.name || state.name;
+  state.holds = p.holds.map(h=>({ id:uid(), name:h.name, items:h.items.map(it=>({id:uid(), name:it.name, state:STATES.includes(it.state)?it.state:"need"})) }));
+  save(); render(); closeOv("ov-import");
+};
+
+$("#btn-diff").onclick = ()=>{ $("#diff-text").value = ""; $("#diff-out").innerHTML = ""; openOv("ov-diff"); };
+$("#btn-do-diff").onclick = ()=>{
+  const room = parseManifest($("#diff-text").value);
+  if(!room.holds.length){ $("#diff-out").innerHTML = '<div class="empty">Paste a roommate manifest first.</div>'; return; }
+  const d = diff(state, room);
+  const rn = room.name || "roommate";
+  let html = "";
+  html += diffSec("duplicates — you're both getting this", d.both.length,
+    d.both.map(b=>'<div class="row"><span class="rn">'+esc(b.name)+
+      ' <span class="badge h">'+b.me+'</span><span class="badge n">them: '+b.them+'</span></span>'+
+      '<span class="rstate">one of you can stop</span></div>').join("") || '<div class="empty">none — clean split.</div>');
+  html += diffSec("gaps — standard kit nobody's got", d.gaps.length,
+    d.gaps.map(g=>'<div class="row gap"><span class="rn">'+esc(g)+'</span>'+
+      '<span class="rstate">someone should grab this</span></div>').join("") || '<div class="empty">none — you two cover the kit.</div>');
+  html += diffSec("only you", d.mineOnly.length,
+    d.mineOnly.map(m=>'<div class="row"><span class="rn">'+esc(m.name)+
+      ' <span class="badge '+m.state[0]+'">'+m.state+'</span></span></div>').join("") || '<div class="empty">none.</div>');
+  html += diffSec("only "+esc(rn), d.theirsOnly.length,
+    d.theirsOnly.map(m=>'<div class="row"><span class="rn">'+esc(m.name)+
+      ' <span class="badge '+m.state[0]+'">'+m.state+'</span></span></div>').join("") || '<div class="empty">none.</div>');
+  $("#diff-out").innerHTML = html;
+};
+function diffSec(title, count, body){
+  return '<div class="diff-sec"><h3>'+title+'<span class="c">'+count+'</span></h3>'+body+'</div>';
+}
+
+$("#btn-sample").onclick = ()=>{
+  if(state.holds.some(h=>h.items.length) && !confirm("Replace current list with sample data?")) return;
+  state = sampleState(); save(); render();
+};
+$("#btn-clear").onclick = ()=>{
+  if(!confirm("Clear all holds and items?")) return;
+  state = defaultState(); save(); render();
+};
+
+// ---- init ----
+load();
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TAPE — The AUTOGOD Exchange</title>
+<style>
+  :root {
+    --bg: #0b0a07;
+    --panel: #12100b;
+    --line: #2a251a;
+    --amber: #ffb000;
+    --amber-dim: #8a6414;
+    --white: #f2ede4;
+    --dim: #6f6a5e;
+    --down: #c9c2b4;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--white); }
+  body {
+    font-family: "SF Mono", "Cascadia Code", Consolas, Menlo, monospace;
+    font-size: 13px;
+    min-height: 100vh;
+  }
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding: 14px 20px 10px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .masthead h1 {
+    font-family: Georgia, "Times New Roman", serif;
+    font-style: italic;
+    font-weight: 400;
+    font-size: 30px;
+    letter-spacing: 2px;
+    color: var(--white);
+  }
+  .masthead h1 b { color: var(--amber); font-weight: 400; }
+  .masthead .sub { color: var(--dim); font-size: 11px; letter-spacing: 1px; }
+  .lamp {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    letter-spacing: 2px;
+    color: var(--amber);
+  }
+  .lamp .dot {
+    width: 9px; height: 9px;
+    background: var(--amber);
+    box-shadow: 0 0 8px var(--amber);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+  .tape {
+    border-bottom: 1px solid var(--line);
+    background: #0e0c08;
+    overflow: hidden;
+    white-space: nowrap;
+    position: relative;
+  }
+  .tape .track {
+    display: inline-block;
+    padding: 7px 0;
+    animation: scroll 40s linear infinite;
+  }
+  .tape:hover .track { animation-play-state: paused; }
+  @keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .tape .item { display: inline-block; margin-right: 34px; font-size: 12px; }
+  .tape .item .up { color: var(--amber); }
+  .tape .item .dn { color: var(--down); }
+  .tape .item .halt { color: var(--dim); }
+  .tape .item .sym { color: var(--white); }
+
+  .grid {
+    display: grid;
+    grid-template-columns: 420px 1fr 340px;
+    gap: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  @media (max-width: 1100px) { .grid { grid-template-columns: 1fr; } }
+
+  .col { padding: 14px 18px; border-right: 1px solid var(--line); min-width: 0; }
+  .col:last-child { border-right: none; }
+  .col h2 {
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--dim);
+    font-weight: 400;
+    margin-bottom: 12px;
+    border-left: 3px solid var(--amber);
+    padding-left: 8px;
+  }
+
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left; font-size: 10px; letter-spacing: 1px;
+    color: var(--dim); font-weight: 400;
+    border-bottom: 1px solid var(--line);
+    padding: 4px 6px 6px 0;
+  }
+  th.r, td.r { text-align: right; }
+  td { padding: 7px 6px 7px 0; border-bottom: 1px solid #1a1710; vertical-align: middle; }
+  tr.q { cursor: pointer; }
+  tr.q:hover td { background: #16130c; }
+  tr.q.sel td { background: #1a1509; }
+  tr.q.sel .sym { color: var(--amber); }
+  .sym { color: var(--white); font-size: 13px; }
+  .nm { color: var(--dim); font-size: 10px; letter-spacing: 1px; }
+  .last { font-size: 15px; }
+  .up { color: var(--amber); }
+  .dn { color: var(--down); }
+  .badge {
+    display: inline-block; font-size: 9px; letter-spacing: 1px;
+    padding: 2px 5px; border: 1px solid var(--line); color: var(--dim);
+  }
+  .badge.open { color: var(--amber); border-color: var(--amber-dim); }
+  .badge.halted { color: var(--dim); }
+  .badge.delisted {
+    color: var(--white);
+    background: repeating-linear-gradient(45deg, #2a251a 0 4px, #12100b 4px 8px);
+    border: 1px solid var(--dim);
+  }
+  .cap { color: var(--white); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .cap.live { color: var(--amber); }
+  .live-dot {
+    display: inline-block; width: 6px; height: 6px; margin-left: 4px;
+    background: var(--amber); box-shadow: 0 0 6px var(--amber);
+    animation: pulse 1.6s ease-in-out infinite; vertical-align: middle;
+  }
+  .gridload {
+    margin-top: 14px; padding: 10px 12px;
+    border: 1px solid var(--line); background: #0e0c08;
+    font-size: 10px; letter-spacing: 1px; color: var(--dim);
+  }
+  .gridload .gl-big {
+    font-size: 26px; color: var(--amber); letter-spacing: 0;
+    font-variant-numeric: tabular-nums; line-height: 1.1;
+  }
+  .gridload .gl-row { display: flex; justify-content: space-between; margin-top: 6px; }
+  .gridload .gl-gpu { color: #b8b2a4; }
+  .gridload .gl-gpu b { color: var(--white); font-weight: 400; }
+
+  .headline {
+    display: flex; align-items: baseline; gap: 14px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 10px; margin-bottom: 12px;
+  }
+  .headline .big {
+    font-size: 46px;
+    font-variant-numeric: tabular-nums;
+    color: var(--white);
+    line-height: 1;
+  }
+  .headline .chg { font-size: 16px; }
+  .headline .who { font-size: 11px; color: var(--dim); letter-spacing: 2px; }
+  svg.chart { width: 100%; height: 230px; display: block; }
+  .axis { font-size: 9px; fill: var(--dim); font-family: inherit; }
+  .chartnote { font-size: 10px; color: var(--dim); margin-top: 8px; letter-spacing: 1px; }
+
+  .news { max-height: 560px; overflow-y: auto; }
+  .news .ev {
+    padding: 8px 0;
+    border-bottom: 1px solid #1a1710;
+    font-size: 11px;
+    line-height: 1.5;
+    cursor: pointer;
+  }
+  .news .ev:hover { background: #16130c; }
+  .news .ev .t { color: var(--dim); font-size: 10px; }
+  .news .ev .st-done { color: var(--amber); }
+  .news .ev .st-fail { color: var(--white); }
+  .news .ev .st-int { color: var(--dim); }
+  .news .ev .txt { color: #b8b2a4; display: block; margin-top: 2px; }
+  .news .ev .tags { margin-top: 3px; }
+  .news .ev .tag {
+    display: inline-block; font-size: 9px; letter-spacing: 1px;
+    border: 1px solid var(--line); color: var(--dim);
+    padding: 1px 4px; margin-right: 4px;
+  }
+  .foot {
+    padding: 10px 20px;
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 1px;
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+  <h1><b>TAPE</b> — The AUTOGOD Exchange</h1>
+  <span class="sub">MACHINES &amp; PROJECTS &middot; PRICES DRIVEN BY REAL JOURNAL ACTIVITY</span>
+  <span class="lamp"><span class="dot"></span>MARKET OPEN</span>
+</div>
+
+<div class="tape"><div class="track" id="tape"></div></div>
+
+<div class="grid">
+  <div class="col">
+    <h2>QUOTES</h2>
+    <table>
+      <thead>
+        <tr><th>SYM</th><th class="r">LAST</th><th class="r">CHG</th><th class="r">%</th><th class="r">MKT CAP</th></tr>
+      </thead>
+      <tbody id="quotes"></tbody>
+    </table>
+    <div class="gridload" id="gridload"></div>
+  </div>
+
+  <div class="col">
+    <h2>CHART</h2>
+    <div class="headline">
+      <span class="who" id="h-who">FRD</span>
+      <span class="big" id="h-last">—</span>
+      <span class="chg" id="h-chg"></span>
+    </div>
+    <svg class="chart" id="chart" viewBox="0 0 760 230" preserveAspectRatio="none"></svg>
+    <div class="chartnote" id="chartnote"></div>
+  </div>
+
+  <div class="col">
+    <h2>THE WIRE</h2>
+    <div class="news" id="news"></div>
+  </div>
+</div>
+
+<div class="foot">
+  <span>TAKE 24H &middot; REFRESH 15S &middot; LOCAL-ONLY &middot; MKT CAPS FROM LIVE GPU WATTS &middot; NO REAL MONEY WAS HARMED</span>
+  <span id="stamp"></span>
+</div>
+
+<script>
+"use strict";
+
+var SELECTED = "FRD";
+var HaltedNotes = {
+  ODYS: "ODYSSEUS — delisted. CT100 retired, kept warm.",
+  PANTH: "PANTHEON — halted. Proxmox host, read-only, no trading.",
+  NITRO: "NITRO — halted. Laptop is closed.",
+  MAXI: "MAXI — halted. Across the LAN, out of reach."
+};
+
+function fmtPct(p) {
+  var s = p > 0 ? "+" : "";
+  return s + p.toFixed(2) + "%";
+}
+function fmtChg(c) {
+  var s = c > 0 ? "+" : "";
+  return s + c.toFixed(2);
+}
+function cls(p) { return p >= 0 ? "up" : "dn"; }
+function fmtCap(v) {
+  if (v >= 1e9) return "$" + (v / 1e9).toFixed(2) + "B";
+  if (v >= 1e6) return "$" + (v / 1e6).toFixed(2) + "M";
+  if (v >= 1e3) return "$" + (v / 1e3).toFixed(1) + "K";
+  return "$" + v.toFixed(0);
+}
+function fmtShares(n) {
+  if (n >= 1e6) return (n / 1e6).toFixed(2) + "M";
+  if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+  return String(n);
+}
+
+function tapeHTML(quotes) {
+  var parts = [];
+  quotes.forEach(function (q) {
+    if (q.status === "DELISTED") {
+      parts.push('<span class="item"><span class="sym">' + q.sym + '</span> ' +
+        '<span class="halt">' + q.last.toFixed(2) + ' DELISTED</span></span>');
+    } else if (q.status === "SUSPENDED") {
+      parts.push('<span class="item"><span class="sym">' + q.sym + '</span> ' +
+        '<span class="halt">' + q.last.toFixed(2) + ' HALTED</span></span>');
+    } else {
+      parts.push('<span class="item"><span class="sym">' + q.sym + '</span> ' +
+        '<span class="' + cls(q.pct) + '">' + q.last.toFixed(2) + ' ' +
+        fmtChg(q.chg) + ' ' + fmtPct(q.pct) + '</span></span>');
+    }
+  });
+  var s = parts.join("");
+  return s + s; /* duplicate for seamless loop */
+}
+
+function quotesHTML(quotes) {
+  return quotes.map(function (q) {
+    var badge = q.status === "OPEN"
+      ? '<span class="badge open">OPEN</span>'
+      : (q.status === "DELISTED"
+          ? '<span class="badge delisted">DELISTED</span>'
+          : '<span class="badge halted">HALTED</span>');
+    var capCell = q.cap_live
+      ? '<span class="cap live" title="shares = live GPU watts (' + q.shares + 'W)">' + fmtCap(q.mkt_cap) + ' <span class="live-dot"></span></span>'
+      : '<span class="cap" title="' + fmtShares(q.shares) + ' shares">' + fmtCap(q.mkt_cap) + '</span>';
+    return '<tr class="q' + (q.sym === SELECTED ? ' sel' : '') + '" data-sym="' + q.sym + '">' +
+      '<td><span class="sym">' + q.sym + '</span><br><span class="nm">' + q.name + '</span><br>' + badge + '</td>' +
+      '<td class="r last">' + q.last.toFixed(2) + '</td>' +
+      '<td class="r ' + cls(q.pct) + '">' + fmtChg(q.chg) + '</td>' +
+      '<td class="r ' + cls(q.pct) + '">' + fmtPct(q.pct) + '</td>' +
+      '<td class="r">' + capCell + '</td>' +
+      '</tr>';
+  }).join("");
+}
+
+/* Pure: build SVG chart markup from a quote. No DOM access. */
+function chartSVG(q, W, H) {
+  var P = { l: 46, r: 14, t: 12, b: 24 };
+  var pts = q.pts;
+  var stamps = q.stamps;
+  if (!pts || pts.length < 2) {
+    return '<text x="' + (W / 2) + '" y="' + (H / 2) + '" class="axis" text-anchor="middle">NO TRADES YET</text>';
+  }
+  var min = Math.min.apply(null, pts);
+  var max = Math.max.apply(null, pts);
+  if (max - min < 0.5) { min -= 0.25; max += 0.25; }
+  var span = max - min;
+  min -= span * 0.08;
+  max += span * 0.08;
+  span = max - min;
+
+  function X(i) { return P.l + (W - P.l - P.r) * (i / (pts.length - 1)); }
+  function Y(v) { return P.t + (H - P.t - P.b) * (1 - (v - min) / span); }
+
+  var out = [];
+  /* grid: 4 horizontal price lines */
+  for (var g = 0; g <= 3; g++) {
+    var v = min + span * (g / 3);
+    var y = Y(v);
+    out.push('<line x1="' + P.l + '" y1="' + y + '" x2="' + (W - P.r) + '" y2="' + y +
+      '" stroke="#2a251a" stroke-width="1"/>');
+    out.push('<text x="' + (P.l - 6) + '" y="' + (y + 3) + '" class="axis" text-anchor="end">' +
+      v.toFixed(1) + '</text>');
+  }
+  /* time labels: 4 verticals */
+  for (var t = 0; t <= 3; t++) {
+    var i = Math.round((pts.length - 1) * (t / 3));
+    var d = new Date(stamps[i]);
+    var lab = ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2);
+    out.push('<line x1="' + X(i) + '" y1="' + P.t + '" x2="' + X(i) + '" y2="' + (H - P.b) +
+      '" stroke="#1a1710" stroke-width="1"/>');
+    out.push('<text x="' + X(i) + '" y="' + (H - 8) + '" class="axis" text-anchor="middle">' + lab + '</text>');
+  }
+  /* area fill under line */
+  var line = pts.map(function (v, i) { return X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join(" ");
+  var area = P.l + "," + (H - P.b) + " " + line + " " + (W - P.r) + "," + (H - P.b);
+  out.push('<polygon points="' + area + '" fill="#ffb000" opacity="0.07"/>');
+  out.push('<polyline points="' + line + '" fill="none" stroke="#ffb000" stroke-width="1.6"/>');
+  /* last price: dashed + dot */
+  var ly = Y(pts[pts.length - 1]);
+  out.push('<line x1="' + P.l + '" y1="' + ly + '" x2="' + (W - P.r) + '" y2="' + ly +
+    '" stroke="#8a6414" stroke-width="1" stroke-dasharray="4 4"/>');
+  out.push('<circle cx="' + X(pts.length - 1) + '" cy="' + ly + '" r="3.4" fill="#ffb000"/>');
+  return out.join("\n");
+}
+
+function headlineHTML(q) {
+  var who = q.sym + " · " + q.name;
+  var note = HaltedNotes[q.sym];
+  if (!note && q.sym === "TBEAST") {
+    note = "MKT CAP = PRICE × LIVE GPU WATTS (" + q.shares + "W RIGHT NOW)";
+  }
+  var chg = q.status === "OPEN"
+    ? '<span class="' + cls(q.pct) + '">' + fmtChg(q.chg) + " " + fmtPct(q.pct) + " (24H)</span>"
+    : '<span class="halt">' + q.status + '</span>';
+  return { who: who, last: q.last.toFixed(2), chg: chg,
+           note: note || ("TAKE 24H · " + q.pts.length + " PRINTS · SEED: JOURNAL ACTIVITY") };
+}
+
+/* Pure: render the live grid-load meter from grid_load. No DOM access. */
+function gridLoadHTML(gl) {
+  if (!gl) return "";
+  var rows = (gl.gpus || []).map(function (g) {
+    return '<span class="gl-gpu"><b>' + g.name.replace("Tesla ", "") + '</b> ' +
+      g.watts.toFixed(0) + 'W</span>';
+  }).join("");
+  var label = (gl.gpus && gl.gpus.length) ? "LIVE GPU DRAW" : "GRID LOAD (NO METER)";
+  return '<div class="gl-big">' + gl.watts.toFixed(0) + ' W</div>' +
+    '<div class="gl-row"><span>' + label + '</span></div>' +
+    rows;
+}
+
+function newsHTML(events) {
+  return events.map(function (e) {
+    var st = e.status === "done" ? "st-done" : (e.status === "FAILED" ? "st-fail" : "st-int");
+    var rc = e.rc ? " rc=" + e.rc : "";
+    var secs = e.secs ? " · " + Math.round(e.secs / 60) + "m" : "";
+    var tags = (e.touches || []).map(function (s) {
+      return '<span class="tag" data-sym="' + s + '">' + s + '</span>';
+    }).join("");
+    return '<div class="ev" data-sym="' + (e.touches && e.touches.length ? e.touches[0] : "") + '">' +
+      '<span class="t">' + e.t + '</span> <span class="' + st + '">[' + e.type + ' ' + e.status + rc + secs + ']</span>' +
+      '<span class="txt">' + e.text.replace(/</g, "&lt;") + '</span>' +
+      (tags ? '<span class="tags">' + tags + '</span>' : '') +
+      '</div>';
+  }).join("");
+}
+
+function render(data) {
+  document.getElementById("tape").innerHTML = tapeHTML(data.quotes);
+  document.getElementById("quotes").innerHTML = quotesHTML(data.quotes);
+  document.getElementById("news").innerHTML = newsHTML(data.news);
+  document.getElementById("gridload").innerHTML = gridLoadHTML(data.grid_load);
+  document.getElementById("stamp").textContent =
+    "LAST PRINT " + new Date(data.now).toLocaleTimeString();
+  var q = null;
+  for (var i = 0; i < data.quotes.length; i++) {
+    if (data.quotes[i].sym === SELECTED) { q = data.quotes[i]; break; }
+  }
+  if (!q) { q = data.quotes[0]; SELECTED = q.sym; }
+  var h = headlineHTML(q);
+  document.getElementById("h-who").textContent = h.who;
+  document.getElementById("h-last").textContent = h.last;
+  document.getElementById("h-chg").innerHTML = h.chg;
+  document.getElementById("chartnote").textContent = h.note;
+  document.getElementById("chart").innerHTML = chartSVG(q, 760, 230);
+}
+
+function selectSym(sym) {
+  if (!sym) return;
+  SELECTED = sym;
+  refresh();
+}
+
+function bind() {
+  document.getElementById("quotes").addEventListener("click", function (ev) {
+    var tr = ev.target.closest("tr.q");
+    if (tr) selectSym(tr.getAttribute("data-sym"));
+  });
+  document.getElementById("news").addEventListener("click", function (ev) {
+    var el = ev.target.closest(".ev");
+    if (!el) return;
+    var tag = ev.target.closest(".tag");
+    selectSym(tag ? tag.getAttribute("data-sym") : el.getAttribute("data-sym"));
+  });
+}
+
+function refresh() {
+  fetch("/api/quotes")
+    .then(function (r) { return r.json(); })
+    .then(render)
+    .catch(function (e) {
+      document.getElementById("chartnote").textContent = "FEED DOWN: " + e;
+    });
+}
+
+bind();
+refresh();
+setInterval(refresh, 15000);
+
+/* expose pure fns for the node harness */
+window.__TAPE = { chartSVG: chartSVG, fmtPct: fmtPct, fmtChg: fmtChg,
+                  tapeHTML: tapeHTML, headlineHTML: headlineHTML,
+                  quotesHTML: quotesHTML, gridLoadHTML: gridLoadHTML,
+                  fmtCap: fmtCap, fmtShares: fmtShares };
+</script>
+</body>
+</html>

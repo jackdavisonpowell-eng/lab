@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>thebeast</title>
+<style>
+  :root{
+    --bg:#05080a; --panel:#0b1114; --line:#16242b;
+    --ink:#c9d6d2; --dim:#5f7470; --green:#5fe08a; --amber:#e6c15a;
+    --red:#e06a5f; --cyan:#5fd0e0;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    padding:22px;
+  }
+  /* CRT scanlines */
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.18) 0 1px, transparent 1px 3px);
+    mix-blend-mode:multiply; opacity:.5;
+  }
+  h1{font-size:15px; letter-spacing:.28em; text-transform:uppercase; margin:0 0 4px; color:var(--green)}
+  .sub{color:var(--dim); font-size:12px; margin-bottom:20px}
+  .grid{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px}
+  .card h2{font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--dim); margin:0 0 12px}
+  .gpu{padding:10px 0; border-top:1px dashed var(--line)}
+  .gpu:first-of-type{border-top:none; padding-top:0}
+  .gpu .nm{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px}
+  .gpu .nm b{color:var(--ink); font-weight:600}
+  .lamp{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:7px;vertical-align:middle}
+  .awake{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .asleep{background:var(--dim)}
+  .row{display:flex; align-items:center; gap:10px; margin:5px 0; font-size:12px}
+  .row .lbl{width:64px; color:var(--dim); flex:none}
+  .bar{flex:1; height:8px; background:#0e1a1f; border-radius:4px; overflow:hidden}
+  .bar i{display:block; height:100%; background:var(--cyan); transition:width .4s}
+  .bar i.hot{background:var(--amber)}
+  .bar i.crit{background:var(--red)}
+  .val{width:74px; text-align:right; color:var(--ink); flex:none}
+  .kv{display:flex; justify-content:space-between; font-size:13px; margin:6px 0}
+  .kv span:first-child{color:var(--dim)}
+  .big{font-size:26px; font-weight:600; color:var(--green)}
+  .procs{font-size:12px}
+  .procs .p{display:flex; gap:10px; margin:4px 0; white-space:nowrap}
+  .procs .p .c{width:52px; color:var(--cyan); text-align:right}
+  .procs .p .m{width:48px; color:var(--dim); text-align:right}
+  .procs .p .n{color:var(--ink); overflow:hidden; text-overflow:ellipsis}
+  .foot{margin-top:22px; color:var(--dim); font-size:11px; display:flex; justify-content:space-between}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--dim);margin-right:6px}
+  .dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+</style>
+</head>
+<body>
+  <h1>thebeast</h1>
+  <div class="sub">the machine that runs all day on its own gpu — live</div>
+
+  <div class="grid">
+    <div class="card">
+      <h2>gpus</h2>
+      <div id="gpus">…</div>
+    </div>
+
+    <div class="card">
+      <h2>system</h2>
+      <div class="kv"><span>host</span><span id="host">—</span></div>
+      <div class="kv"><span>uptime</span><span id="up">—</span></div>
+      <div class="kv"><span>load (1/5/15)</span><span id="load">—</span></div>
+      <div class="kv"><span>cpu</span><span><span id="cpu">—</span> / <span id="cores">—</span> cores</span></div>
+      <div class="row"><span class="lbl">ram</span><div class="bar"><i id="rambar"></i></div><span class="val" id="ram">—</span></div>
+    </div>
+
+    <div class="card">
+      <h2>chewing the machine</h2>
+      <div class="procs" id="procs">…</div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <span><span class="dot" id="live"></span>polling /stats every 2s</span>
+    <span id="clock">—</span>
+  </div>
+
+<script>
+function fmtUptime(s){
+  s=Math.floor(s);
+  const d=Math.floor(s/86400); s-=d*86400;
+  const h=Math.floor(s/3600); s-=h*3600;
+  const m=Math.floor(s/60); s-=m*60;
+  return (d?d+'d ':'')+h+'h '+m+'m '+s+'s';
+}
+function mb(v){ return Math.round(v).toLocaleString()+' MB'; }
+function barClass(pct){ return pct>=90?'crit':pct>=70?'hot':''; }
+
+function gpuCard(g){
+  const awake = g.util_pct>1 || g.power_w>40;
+  const memPct = g.mem_total_mb? Math.min(100, g.mem_used_mb/g.mem_total_mb*100):0;
+  const tempPct = Math.min(100, g.temp_c);
+  return `<div class="gpu">
+    <div class="nm"><b><span class="lamp ${awake?'awake':'asleep'}"></span>${g.name}</b>
+    <span style="color:var(--dim);font-size:11px">${awake?'AWAKE':'asleep'}</span></div>
+    <div class="row"><span class="lbl">util</span><div class="bar"><i class="${barClass(g.util_pct)}" style="width:${g.util_pct}%"></i></div><span class="val">${g.util_pct.toFixed(0)}%</span></div>
+    <div class="row"><span class="lbl">vram</span><div class="bar"><i class="${barClass(memPct)}" style="width:${memPct}%"></i></div><span class="val">${mb(g.mem_used_mb)}/${mb(g.mem_total_mb)}</span></div>
+    <div class="row"><span class="lbl">temp</span><div class="bar"><i class="${barClass(tempPct)}" style="width:${tempPct}%"></i></div><span class="val">${g.temp_c.toFixed(0)}°C · ${g.power_w.toFixed(0)}W</span></div>
+  </div>`;
+}
+
+function tick(){
+  fetch('/stats',{cache:'no-store'}).then(r=>r.json()).then(d=>{
+    document.getElementById('host').textContent=d.host;
+    document.getElementById('up').textContent=fmtUptime(d.uptime_s);
+    document.getElementById('load').textContent=d.load.map(x=>x.toFixed(2)).join(' / ');
+    document.getElementById('cpu').textContent=d.cpu.usage_pct.toFixed(0)+'%';
+    document.getElementById('cores').textContent=d.cpu.cores;
+    const rb=document.getElementById('rambar');
+    rb.style.width=d.mem.used_pct+'%';
+    rb.className=barClass(d.mem.used_pct);
+    document.getElementById('ram').textContent=d.mem.used_pct.toFixed(0)+'%';
+    document.getElementById('gpus').innerHTML=d.gpus.map(gpuCard).join('');
+    document.getElementById('procs').innerHTML=d.procs.map(p=>
+      `<div class="p"><span class="c">${p.cpu.toFixed(0)}%</span><span class="m">${p.mem.toFixed(1)}%</span><span class="n" title="pid ${p.pid}">${p.cmd}</span></div>`).join('');
+    document.getElementById('clock').textContent=new Date().toLocaleTimeString();
+    document.getElementById('live').classList.add('on');
+  }).catch(()=>{ document.getElementById('live').classList.remove('on'); });
+}
+tick();
+setInterval(tick,2000);
+</script>
+</body>
+</html>

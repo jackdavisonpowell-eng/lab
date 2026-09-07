@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>FRIDAY — gaze</title>
+<style>
+  :root{
+    --bg:#07080c;
+    --amber:#ffbe5c;
+    --ink:#e6e9ee;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;background:var(--bg);overflow:hidden}
+  body{
+    font-family:"SFMono-Regular",ui-monospace,Menlo,Consolas,monospace;
+    color:var(--ink);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:18px;
+    -webkit-font-smoothing:antialiased;
+  }
+  /* faint radial vignette so the face sits in a pool of light */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 42%, transparent 30%, rgba(0,0,0,.55) 78%);
+  }
+  /* subtle scanlines for the "Pi display" feel */
+  body::after{
+    content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+    background:repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 3px);
+    mix-blend-mode:overlay;
+  }
+  #wrap{position:relative;display:flex;align-items:center;justify-content:center}
+  canvas{
+    image-rendering:pixelated;
+    image-rendering:crisp-edges;
+    display:block;
+    filter:drop-shadow(0 0 26px rgba(255,190,92,.10));
+  }
+  #label{
+    position:absolute;left:0;right:0;bottom:-46px;
+    text-align:center;letter-spacing:.42em;font-size:13px;font-style:italic;
+    color:#8b93a1;text-transform:uppercase;
+    transition:color .4s;
+  }
+  #label .dot{color:var(--amber);font-style:normal;margin-right:.5em}
+  #hint{
+    position:fixed;bottom:14px;left:0;right:0;text-align:center;
+    font-size:10px;letter-spacing:.28em;color:#3a4150;text-transform:uppercase;
+  }
+  #hint b{color:#5c6675;font-weight:normal}
+</style>
+</head>
+<body>
+  <div id="wrap">
+    <canvas id="cv" width="24" height="24"></canvas>
+    <div id="label"><span class="dot">&#9679;</span><span id="moodname">idle</span></div>
+  </div>
+  <div id="hint">
+    <b>&larr;/&rarr;</b> mood &nbsp; <b>space</b> auto &nbsp; <b>b</b> blink &nbsp; <b>1&ndash;9,0</b> direct
+  </div>
+<script>
+"use strict";
+// ============================================================
+//  FRIDAY — gaze. A pixel-art face that idles (blinks, breathes,
+//  glows) and changes mood. A page the Pi could show.
+//  Contract:
+//    ?mood=<name>   pin a mood (no auto drift)
+//    ?poll=<url>    poll a URL for the live mood (text or {mood:"x"})
+//    window.FRIDAY_FACE = { setMood, getMood, moods, blink, auto }
+// ============================================================
+
+const GRID = 24;
+
+// Head silhouette: per-row [startCol,endCol] inclusive. 1 = face.
+const HEAD = [
+  [8,15],[7,16],[6,17],[6,17],[5,18],[5,18],[5,18],[5,18],
+  [5,18],[5,18],[5,18],[5,18],[5,18],[6,17],[6,17],[7,16],
+  [8,15],[9,14],[10,13],[11,12],[11,12],[11,12],[12,11],[12,11]
+];
+
+// palette: 0 empty, 1 face, 2 face-shade, 3 amber, 4 dark feature, 5 amber-core
+const PAL = {
+  0:null,
+  1:"#e6e9ee",
+  2:"#c6ccd6",
+  3:"#ffbe5c",
+  4:"#23262e",
+  5:"#ffe2ab"
+};
+
+// Eye / brow / mouth anchors (grid coords).
+const L = {x:8,  y:9};   // left eye center
+const R = {x:15, y:9};   // right eye center
+const MOUTH = {x:11, y:16};
+
+const MOODS = {
+  idle:      {eyes:"open",   brows:"flat", mouth:"flat",  glow:.45, label:"idle"},
+  listening: {eyes:"open",   brows:"up",   mouth:"flat",  glow:.85, label:"listening"},
+  thinking:  {eyes:"up",     brows:"up1",  mouth:"flat",  glow:.60, label:"thinking"},
+  speaking:  {eyes:"open",   brows:"flat", mouth:"talk",  glow:.70, label:"speaking"},
+  happy:     {eyes:"happy",  brows:"up",   mouth:"smile", glow:.85, label:"happy"},
+  sad:       {eyes:"sad",    brows:"down", mouth:"frown", glow:.40, label:"sad"},
+  alert:     {eyes:"wide",   brows:"up",   mouth:"flat",  glow:.95, label:"alert"},
+  surprised: {eyes:"wide",   brows:"up",   mouth:"o",     glow:1.0, label:"surprised"},
+  sleepy:    {eyes:"sleepy", brows:"flat", mouth:"flat",  glow:.30, label:"sleepy"},
+  focus:     {eyes:"slit",   brows:"down", mouth:"flat",  glow:.65, label:"focus"},
+  error:     {eyes:"glitch", brows:"down", mouth:"frown", glow:.95, label:"error"},
+  off:       {eyes:"closed", brows:"flat", mouth:"flat",  glow:.14, label:"offline"}
+};
+const ORDER = Object.keys(MOODS);
+// weighted random for auto-drift: calm states dominate.
+const WEIGHTS = {idle:5, listening:4, thinking:3, speaking:2, happy:1, sad:1,
+                 alert:1, surprised:1, sleepy:2, focus:2, error:1, off:1};
+
+// ---- grid helpers ------------------------------------------------
+function cell(g,x,y,v){ if(x>=0&&x<GRID&&y>=0&&y<GRID) g[y*GRID+x]=v; }
+function rect(g,x,y,w,h,v){ for(let j=0;j<h;j++)for(let i=0;i<w;i++)cell(g,x+i,y+j,v); }
+function hline(g,x,y,w,v){ rect(g,x,y,w,1,v); }
+
+function buildFace(g){
+  for(let y=0;y<GRID;y++){
+    const [a,b]=HEAD[y];
+    if(a>b) continue;
+    for(let x=a;x<=b;x++){
+      // lower third gets shade for depth
+      g[y*GRID+x] = (y>=14 ? 2 : 1);
+    }
+  }
+}
+
+// ---- eyes --------------------------------------------------------
+function drawEyes(g,type,t){
+  const set=(cx,cy,w,h,v)=>{ rect(g,cx-w/2|0, cy-h/2|0, w, h, v); };
+  const amber=(v)=>v; // 3 or 5
+  switch(type){
+    case "open":
+      set(L.x,L.y,2,2,3); set(R.x,R.y,2,2,3);
+      cell(g,L.x-0,L.y-1,5); cell(g,R.x,R.y-1,5); // bright top
+      break;
+    case "wide":
+      set(L.x,L.y,3,3,3); set(R.x,R.y,3,3,3);
+      cell(g,L.x,L.y,5); cell(g,R.x,R.y,5);
+      break;
+    case "closed":
+      hline(g,L.x-1,L.y,2,4); hline(g,R.x-1,R.y,2,4);
+      break;
+    case "sleepy":
+      hline(g,L.x-1,L.y+1,2,3); hline(g,R.x-1,R.y+1,2,3);
+      cell(g,L.x-1,L.y,3); cell(g,R.x-1,R.y,3);
+      break;
+    case "up":
+      hline(g,L.x-1,L.y-1,2,3); hline(g,R.x-1,R.y-1,2,3);
+      cell(g,L.x,L.y-2,5); cell(g,R.x,R.y-2,5);
+      break;
+    case "happy":
+      // upturned: lit bottom row, dark top corners
+      hline(g,L.x-1,L.y+1,2,3); hline(g,R.x-1,R.y+1,2,3);
+      cell(g,L.x-1,L.y,4); cell(g,L.x+1,L.y,4);
+      cell(g,R.x-1,R.y,4); cell(g,R.x+1,R.y,4);
+      break;
+    case "sad":
+      hline(g,L.x-1,L.y-1,2,3); hline(g,R.x-1,R.y-1,2,3);
+      cell(g,L.x-1,L.y,4); cell(g,L.x+1,L.y,4);
+      cell(g,R.x-1,R.y,4); cell(g,R.x+1,R.y,4);
+      break;
+    case "slit":
+      hline(g,L.x-1,L.y,3,3); hline(g,R.x-1,R.y,3,3);
+      break;
+    case "glitch": {
+      // flicker: per-frame pseudo-random on/off + jitter
+      const f = Math.floor(t*24);
+      const on = ((f*2654435761)>>>0)%3!==0;
+      const jx = ((f*40503)>>>0)%2 - 1;
+      if(on){
+        set(L.x+jx,L.y,2,2,3); set(R.x-jx,R.y,2,2,3);
+      } else {
+        hline(g,L.x-1,L.y,2,4); hline(g,R.x-1,R.y,2,4);
+      }
+      break;
+    }
+    default:
+      set(L.x,L.y,2,2,3); set(R.x,R.y,2,2,3);
+  }
+}
+
+// ---- brows -------------------------------------------------------
+function drawBrows(g,type){
+  const lb=(dx,dy)=>hline(g,L.x-1+dx, L.y-3+dy, 3, 4);
+  const rb=(dx,dy)=>hline(g,R.x-1+dx, R.y-3+dy, 3, 4);
+  switch(type){
+    case "flat":   lb(0,0); rb(0,0); break;
+    case "up":     lb(0,-1); rb(0,-1); break;          // both raised
+    case "up1":    lb(0,-1); rb(0,0); break;           // left raised (thinking)
+    case "down":   lb(0,1); rb(0,1); break;            // both lowered
+  }
+}
+
+// ---- mouth -------------------------------------------------------
+function drawMouth(g,type,t){
+  const {x,y}=MOUTH;
+  switch(type){
+    case "flat":   hline(g,x-1,y,3,4); break;
+    case "smile":  hline(g,x-1,y,3,4); cell(g,x-2,y+1,4); cell(g,x+2,y+1,4); break;
+    case "frown":  hline(g,x-1,y+1,3,4); cell(g,x-2,y,4); cell(g,x+2,y,4); break;
+    case "o":      cell(g,x,y,4); cell(g,x-1,y,4); cell(g,x+1,y,4);
+                   cell(g,x,y-1,4); cell(g,x,y+1,4); break;
+    case "talk": {
+      // animated open/close
+      const ph = Math.floor(t*10);
+      const open = (ph%2===0);
+      if(open){ cell(g,x-1,y,4); cell(g,x,y,4); cell(g,x+1,y,4);
+                cell(g,x-1,y+1,4); cell(g,x,y+1,4); cell(g,x+1,y+1,4); }
+      else { hline(g,x-1,y+1,3,4); }
+      break;
+    }
+  }
+}
+
+// ---- render ------------------------------------------------------
+const cv = document.getElementById("cv");
+const ctx = cv.getContext("2d");
+let S = 20; // pixel scale (recomputed on resize)
+
+function resize(){
+  const avail = Math.min(window.innerWidth, window.innerHeight) - 140;
+  S = Math.max(10, Math.floor(avail / GRID));
+  cv.width = GRID; cv.height = GRID;
+  cv.style.width  = (GRID*S)+"px";
+  cv.style.height = (GRID*S)+"px";
+}
+window.addEventListener("resize", resize);
+resize();
+
+function blit(g, glow){
+  ctx.clearRect(0,0,GRID,GRID);
+  // pass 1: non-glow cells
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    const v=g[y*GRID+x];
+    if(v===0||v===3||v===5) continue;
+    ctx.fillStyle=PAL[v]; ctx.fillRect(x,y,1,1);
+  }
+  // pass 2: glow cells (amber) with shadow
+  ctx.save();
+  ctx.shadowColor="rgba(255,190,92,"+(0.35+0.6*glow)+")";
+  ctx.shadowBlur=(3+7*glow);
+  for(let y=0;y<GRID;y++)for(let x=0;x<GRID;x++){
+    const v=g[y*GRID+x];
+    if(v!==3&&v!==5) continue;
+    ctx.fillStyle=PAL[v]; ctx.fillRect(x,y,1,1);
+  }
+  ctx.restore();
+}
+
+// ---- state machine ----------------------------------------------
+let mood = "idle";
+let auto = true;
+let blinkUntil = 0;      // perf.now() ms when blink ends
+let nextMoodAt = 0;      // perf.now() ms when auto picks next mood
+const t0 = performance.now();
+
+function now(){ return performance.now(); }
+
+function setMood(m, opts){
+  if(!MOODS[m]) m = "idle";
+  if(m===mood && !(opts&&opts.force)) return;
+  mood = m;
+  // a blink marks the transition (natural, ties blink to mood change)
+  blinkUntil = now()+140;
+  const el=document.getElementById("moodname");
+  if(el) el.textContent = MOODS[m].label;
+  const dot=document.querySelector("#label .dot");
+  if(dot) dot.style.color = (m==="off"||m==="sleepy") ? "#5c6675" : "var(--amber)";
+}
+
+function pickAuto(){
+  let tot=0; for(const k in WEIGHTS) tot+=WEIGHTS[k];
+  let r=Math.random()*tot;
+  for(const k in WEIGHTS){ r-=WEIGHTS[k]; if(r<=0) return k; }
+  return "idle";
+}
+
+function blink(){ blinkUntil = now()+160; }
+
+// ---- main loop ---------------------------------------------------
+function frame(){
+  const t = (now()-t0)/1000;
+  const mm = MOODS[mood];
+
+  // auto drift
+  if(auto && now()>nextMoodAt){
+    setMood(pickAuto());
+    nextMoodAt = now() + 4000 + Math.random()*5000;
+  }
+
+  // breathing: slow vertical bob + glow pulse
+  const bob = Math.round(Math.sin(t*0.8)*1);
+  const pulse = 0.5 + 0.5*Math.sin(t*1.6);
+  const glow = mm.glow * (0.7 + 0.3*pulse);
+
+  const g = new Array(GRID*GRID).fill(0);
+  buildFace(g);
+  drawBrows(g, mm.brows);
+  const eyeType = (now()<blinkUntil) ? "closed" : mm.eyes;
+  drawEyes(g, eyeType, t);
+  drawMouth(g, mm.mouth, t);
+
+  // apply the breathing bob by shifting the whole grid vertically
+  const shifted = new Array(GRID*GRID).fill(0);
+  for(let y=0;y<GRID;y++){
+    const yy=y+bob;
+    for(let x=0;x<GRID;x++){
+      if(yy>=0&&yy<GRID) shifted[yy*GRID+x]=g[y*GRID+x];
+    }
+  }
+  blit(shifted, glow);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+nextMoodAt = now()+2500;
+
+// ---- controls ----------------------------------------------------
+function stepMood(d){
+  auto=false;
+  const i=ORDER.indexOf(mood);
+  setMood(ORDER[(i+d+ORDER.length)%ORDER.length]);
+}
+window.addEventListener("keydown",(e)=>{
+  if(e.key==="ArrowRight"||e.key==="l") stepMood(1);
+  else if(e.key==="ArrowLeft"||e.key==="h") stepMood(-1);
+  else if(e.key===" "){ auto=!auto; if(auto) nextMoodAt=now()+1000; e.preventDefault(); }
+  else if(e.key==="b") blink();
+  else if(/^[0-9]$/.test(e.key)){
+    const n=e.key==="0"?9:(+e.key-1);
+    auto=false; setMood(ORDER[n]);
+  }
+});
+
+// ---- URL contract + public API -----------------------------------
+function applyParams(){
+  const q=new URLSearchParams(location.search);
+  const m=q.get("mood");
+  if(m && MOODS[m]){ auto=false; setMood(m,{force:true}); }
+  const poll=q.get("poll");
+  if(poll){
+    auto=false;
+    (async function loop(){
+      try{
+        const r=await fetch(poll,{cache:"no-store"});
+        const txt=(await r.text()).trim();
+        let moodName=txt;
+        if(txt[0]==="{"){ try{ moodName=JSON.parse(txt).mood; }catch(_){} }
+        if(moodName && MOODS[moodName]) setMood(moodName);
+      }catch(_){ /* keep current mood on fetch error */ }
+      setTimeout(loop, 2000);
+    })();
+  }
+}
+window.FRIDAY_FACE = {
+  setMood:(m)=>setMood(m,{force:true}),
+  getMood:()=>mood,
+  moods:ORDER.slice(),
+  blink:blink,
+  setAuto:(v)=>{ auto=!!v; if(auto) nextMoodAt=now()+1000; }
+};
+applyParams();
+</script>
+</body>
+</html>

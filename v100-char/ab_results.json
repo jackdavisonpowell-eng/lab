@@ -1,0 +1,66 @@
+{
+ "phase_200": {
+  "pl": 200,
+  "tag": "200W",
+  "probes": [
+   {
+    "prompt_tokens": 7272,
+    "completion_tokens": 300,
+    "cached_tokens": 7268,
+    "wall_s": 12.885,
+    "run": 0,
+    "temp_before_c": 68
+   },
+   {
+    "prompt_tokens": 7872,
+    "completion_tokens": 300,
+    "cached_tokens": 6244,
+    "wall_s": 12.555,
+    "run": 1,
+    "temp_before_c": 68
+   },
+   {
+    "prompt_tokens": 8472,
+    "completion_tokens": 300,
+    "cached_tokens": 6844,
+    "wall_s": 12.713,
+    "run": 2,
+    "temp_before_c": 68
+   }
+  ],
+  "sampler": "power_med=60.5 power_max=220.3 sm_med=1260 sm_max=1380 throttle_events=211 throttle_types=['0x0000000000000000', '0x0000000000000004', '0x0000000000000020']"
+ },
+ "phase_250": {
+  "pl": 250,
+  "tag": "250W",
+  "probes": [
+   {
+    "prompt_tokens": 7272,
+    "completion_tokens": 300,
+    "cached_tokens": 6244,
+    "wall_s": 11.316,
+    "run": 0,
+    "temp_before_c": 59
+   },
+   {
+    "prompt_tokens": 7872,
+    "completion_tokens": 300,
+    "cached_tokens": 6244,
+    "wall_s": 12.1,
+    "run": 1,
+    "temp_before_c": 63
+   },
+   {
+    "prompt_tokens": 8472,
+    "completion_tokens": 300,
+    "cached_tokens": 6844,
+    "wall_s": 12.161,
+    "run": 2,
+    "temp_before_c": 64
+   }
+  ],
+  "sampler": "power_med=133.9 power_max=262.2 sm_med=1380 sm_max=1380 throttle_events=211 throttle_types=['0x0000000000000000', '0x0000000000000004']"
+ },
+ "restored_pl": "200.00",
+ "final_state": "200.00 W, 60, 1380 MHz"
+}

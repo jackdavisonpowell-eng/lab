@@ -1,0 +1,23 @@
+- 2026-09-01T23:47:10-04:00 | thebeast | thebeast | ./run.sh  ->  http://127.0.0.1:8117/   (screenshot: screenshot.png)
+- 2026-09-02T15:18:20-04:00 | horse-tinder | HORSE TINDER | cd /home/jack/lab/horse-tinder && ./run.sh  ->  http://127.0.0.1:8123/
+- 2026-09-02T20:57:01-04:00 | breath | breath | cd /home/jack/lab/breath && ./run.sh  ->  http://127.0.0.1:8120/   (screenshot: screenshot.png)
+- 2026-09-03T03:04:30-04:00 | cluster | cluster | cd /home/jack/lab/cluster && ./run.sh  ->  http://127.0.0.1:8124/
+- 2026-09-03T11:21:17-04:00 | shred | shred | cd /home/jack/lab/shred && ./run.sh  ->  http://127.0.0.1:8126/  (space = spin, l = landed, b = bailed)
+- 2026-09-03T17:40:59-04:00 | racket | racket | cd /home/jack/lab/racket && ./run.sh  ->  http://127.0.0.1:8126/   (screenshot: screenshot.png)
+- 2026-09-03T23:29:03-04:00 | seam | seam | sh run.sh  →  http://127.0.0.1:8127  (lab port 8127)
+- 2026-09-04T05:15:57-04:00 | manifest | MANIFEST | ./run.sh  ->  http://127.0.0.1:8128/
+- 2026-09-04T11:07:30-04:00 | dangling | DANGLING | cd /home/jack/lab/dangling && ./run.sh   (terminal text adventure, no port)
+- 2026-09-04T16:54:33-04:00 | supernova | SUPERNOVA | cd /home/jack/lab/supernova && ./run.sh   (then open http://127.0.0.1:8127)
+- 2026-09-04T22:54:34-04:00 | satisfactory-ratio | RATIO | ./run.sh  →  http://127.0.0.1:8131/
+- 2026-09-05T05:07:57-04:00 | abyss | ABYSS | ./run.sh  →  http://127.0.0.1:8128/   (screenshot: screenshot.png)
+- 2026-09-05T11:36:21-04:00 | reef | reef | cd /home/jack/lab/reef && ./run.sh   (keys: q quit, f feed; --load 100 for the panic)
+- 2026-09-05T18:02:36-04:00 | rain | rain | cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
+- 2026-09-05T23:44:58-04:00 | kicker | KICKER | sh run.sh  →  http://127.0.0.1:8130/  (sample card: sample-card-01.svg)
+- 2026-09-06T05:51:36-04:00 | villeneuve | Villeneuve | `cd /home/jack/lab/villeneuve && ./run.sh` → http://127.0.0.1:8132
+- 2026-09-06T13:29:09-04:00 | ratify | RATIFY | sh /home/jack/lab/ratify/run.sh  →  http://127.0.0.1:8133/
+- 2026-09-06T20:02:54-04:00 | poise | POISE — balance playground | bash run.sh  →  http://127.0.0.1:8134/   (screenshot: screenshot.png)
+- 2026-09-07T02:02:20-04:00 | wire | WIRE | `cd /home/jack/lab/wire && ./run.sh` → http://127.0.0.1:8135/  (port 8135)
+- 2026-09-07T09:59:07-04:00 | gaze | gaze | cd /home/jack/lab/gaze && sh run.sh → http://127.0.0.1:8122/  (moods via ?mood=happy or ?poll=URL; screenshot: /home/jack/lab/gaze/screenshot.png)
+- 2026-09-07T12:36:10-04:00 | lapboard | lapboard | cd /home/jack/lab/lapboard && ./run.sh  ->  http://127.0.0.1:8125/  (space = start/finish lap)
+- 2026-09-07T12:36:10-04:00 | tape | TAPE — The AUTOGOD Exchange | sh /home/jack/lab/tape/run.sh → http://127.0.0.1:8136
+- 2026-09-07T12:36:10-04:00 | streak | STREAK — pre-calc drill trainer | cd /home/jack/lab/streak && sh run.sh  ->  http://127.0.0.1:8129/

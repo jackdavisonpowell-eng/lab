@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RATIFY — POLS 1101 Ch 1–3</title>
+<style>
+  :root{
+    --bg:#0c0a07; --ink:#efe7d7; --amber:#e9a13b; --amber-dim:#8a6a35;
+    --line:#3a3226; --dead:#6b6152;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; border-radius:0;}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:Georgia,"Times New Roman",serif;
+    min-height:100vh; padding:28px 18px 60px;
+  }
+  .wrap{max-width:860px; margin:0 auto;}
+  header{
+    border-top:3px solid var(--amber); border-bottom:1px solid var(--line);
+    padding:14px 0 12px; margin-bottom:18px;
+    display:flex; justify-content:space-between; align-items:baseline; gap:12px; flex-wrap:wrap;
+  }
+  h1{
+    font-style:italic; font-weight:700; letter-spacing:.35em;
+    font-size:30px; color:var(--amber);
+  }
+  .sub{font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--dead);}
+  .zig{
+    height:8px; margin:14px 0;
+    background:repeating-linear-gradient(45deg, var(--amber-dim) 0 2px, transparent 2px 10px);
+    opacity:.5;
+  }
+  /* ---- state board ---- */
+  #board{
+    display:grid; grid-template-columns:repeat(13,1fr); gap:4px; margin-bottom:8px;
+  }
+  .state{
+    border:1px solid var(--line); padding:7px 2px 6px; text-align:center;
+    font-size:9px; letter-spacing:.06em; text-transform:uppercase; color:var(--dead);
+    min-height:52px;
+  }
+  .state .sname{display:block; line-height:1.25;}
+  .state .sdate{display:block; font-size:8px; margin-top:3px; color:#4d4536;}
+  .state.ratified{
+    background:var(--amber); border-color:var(--amber); color:#161006; font-weight:700;
+  }
+  .state.ratified .sdate{color:#161006;}
+  .state.rejected{color:#57503f; text-decoration:line-through; border-color:#2a2419;}
+  .state.current{border-color:var(--ink); color:var(--ink);}
+  .state.current .sname{font-weight:700;}
+  #boardnote{font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--dead); margin-bottom:22px;}
+  /* ---- score ---- */
+  #score{
+    display:flex; align-items:baseline; gap:14px; margin-bottom:18px;
+  }
+  #score .big{
+    font-size:64px; font-style:italic; font-weight:700; color:var(--amber); line-height:1;
+  }
+  #score .lbl{font-size:11px; letter-spacing:.25em; text-transform:uppercase; color:var(--dead);}
+  /* ---- screens ---- */
+  .screen{display:none;}
+  .screen.on{display:block;}
+  .card{border:1px solid var(--line); padding:26px 24px;}
+  .kicker{font-size:11px; letter-spacing:.3em; text-transform:uppercase; color:var(--amber); margin-bottom:14px;}
+  .pitch{font-size:17px; line-height:1.65; font-style:italic; max-width:60ch;}
+  .pitch b{color:var(--amber); font-style:normal;}
+  button{
+    font-family:inherit; cursor:pointer; border:1px solid var(--amber);
+    background:transparent; color:var(--amber);
+    font-size:13px; letter-spacing:.28em; text-transform:uppercase;
+    padding:13px 26px; margin-top:22px;
+  }
+  button:hover{background:var(--amber); color:#161006;}
+  button:disabled{border-color:var(--line); color:var(--dead); cursor:default; background:transparent;}
+  /* ---- question ---- */
+  #qstate{font-size:12px; letter-spacing:.22em; text-transform:uppercase; color:var(--dead); margin-bottom:6px;}
+  #qstate b{color:var(--ink);}
+  .qlabel{font-size:12px; letter-spacing:.25em; text-transform:uppercase; color:var(--amber); margin-bottom:10px;}
+  #qterm{font-size:26px; font-style:italic; font-weight:700; margin-bottom:16px;}
+  #qdef{font-size:16px; line-height:1.6; font-style:italic; margin-bottom:18px; color:#d8cfbc;}
+  .opt{
+    display:block; width:100%; text-align:left; margin-top:10px;
+    border:1px solid var(--line); color:var(--ink); background:transparent;
+    padding:13px 15px; font-size:15px; line-height:1.5; letter-spacing:0; text-transform:none;
+    font-family:inherit;
+  }
+  .opt:hover:not(:disabled){border-color:var(--amber); color:var(--amber);}
+  .opt.right{border-color:var(--amber); background:rgba(233,161,59,.14); color:var(--amber); font-weight:700;}
+  .opt.wrong{border-color:var(--ink); text-decoration:line-through; color:var(--dead);}
+  .opt.dim{color:#57503f;}
+  #feedback{margin-top:18px; font-size:14px; line-height:1.6; min-height:22px;}
+  #feedback .tag{
+    display:inline-block; font-size:10px; letter-spacing:.25em; text-transform:uppercase;
+    padding:3px 8px; margin-right:10px; vertical-align:2px;
+  }
+  #feedback .tag.ok{background:var(--amber); color:#161006;}
+  #feedback .tag.no{border:1px solid var(--ink); color:var(--ink);}
+  #next{margin-top:16px;}
+  /* ---- verdict ---- */
+  #verdict{font-size:34px; font-style:italic; font-weight:700; color:var(--amber); margin-bottom:8px;}
+  #verdictsub{font-size:15px; font-style:italic; color:#d8cfbc; line-height:1.6; margin-bottom:20px;}
+  h3.miss{font-size:12px; letter-spacing:.3em; text-transform:uppercase; color:var(--ink); margin:22px 0 10px; border-top:1px solid var(--line); padding-top:16px;}
+  .missitem{margin-bottom:14px; font-size:14px; line-height:1.55;}
+  .missitem .mt{font-style:italic; font-weight:700; color:var(--amber);}
+  .missitem .md{color:#cfc5b0;}
+  footer{margin-top:34px; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:#4d4536; text-align:center;}
+  @media (max-width:700px){
+    #board{grid-template-columns:repeat(5,1fr);}
+    #score .big{font-size:48px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>RATIFY</h1>
+    <div class="sub">POLS 1101 &middot; Ch 1&ndash;3 &middot; practice only &middot; not an exam</div>
+  </header>
+
+  <div id="board" aria-label="state votes"></div>
+  <div id="boardnote">13 states &middot; 9 must ratify &middot; the real threshold</div>
+
+  <div id="score"><span class="big" id="scorebig">0 / 13</span><span class="lbl">ratified</span></div>
+
+  <!-- start -->
+  <section class="screen on" id="scr-start">
+    <div class="card">
+      <div class="kicker">The Constitutional Convention, but it&rsquo;s a quiz</div>
+      <p class="pitch">
+        Thirteen states sit on the floor. Thirteen questions, drawn from the Ch&nbsp;1&ndash;3 glossary.
+        Answer one right and that state <b>ratifies</b>. Answer wrong and it <b>rejects</b>.
+        You need <b>nine of thirteen</b> &mdash; the actual number it took in 1787&ndash;90.
+        Get short and the Articles stand.
+      </p>
+      <button id="btn-start">Call the floor</button>
+    </div>
+  </section>
+
+  <!-- question -->
+  <section class="screen" id="scr-q">
+    <div id="qstate"></div>
+    <div class="zig"></div>
+    <div class="qlabel" id="qlabel"></div>
+    <div id="qbody"></div>
+    <div id="opts"></div>
+    <div id="feedback"></div>
+    <button id="next" style="display:none">Next state &rarr;</button>
+  </section>
+
+  <!-- verdict -->
+  <section class="screen" id="scr-end">
+    <div class="card">
+      <div id="verdict"></div>
+      <div id="verdictsub"></div>
+      <div id="misswrap"></div>
+      <button id="btn-again">Reconvene</button>
+    </div>
+  </section>
+
+  <footer>built by autogod from the vault glossary &middot; local only &middot; lab/ratify</footer>
+</div>
+
+<script>
+"use strict";
+// ---------- data: [chapter, term, definition] — from POLS-1101 Glossary Ch1-3.md ----------
+var TERMS = [
+[1,"Civic engagement","Citizens' active participation in government and public life (voting, contacting officials, serving), which a healthy representative democracy depends on."],
+[1,"Political culture","The shared attitudes, beliefs, and values a society holds about its political system, which shape its institutions and policy."],
+[1,"Political socialization","The process by which people acquire their political beliefs and orientations from family, school, media, peers, and significant events."],
+[1,"Civics vs. citizenship","Civics is the study of government and its rights and duties, while citizenship is the status of being a member of a polity with responsibilities such as voting, jury duty, obeying laws, and paying taxes."],
+[1,"Public opinion","The distribution of citizens' views on political issues, measured through polls and exit polls, which links the public to government."],
+[1,"Democracy / representative democracy","A system in which power rests with the people, exercised either directly or through elected representatives, as opposed to a direct democracy in which citizens vote on policy themselves."],
+[1,"Political efficacy","A citizen's belief that their own participation can make a difference in government, which varies between high and low efficacy."],
+[2,"Articles of Confederation","The first national constitution (1781), which created a weak confederate government with no power to tax, enforce laws, or bind the states."],
+[2,"Confederacy","A union of independent states bound together by a weak central government that cannot tax, enforce, or compel the states."],
+[2,"Unicameral legislature","A single-house legislative body, as under the Articles of Confederation."],
+[2,"Constitutional Convention / Philadelphia Convention","The 1787 meeting of delegates in Philadelphia that drafted the new Constitution to replace the Articles of Confederation."],
+[2,"Original Constitution","The Constitution as adopted in 1787, before the Bill of Rights and later amendments."],
+[2,"Bill of Rights","The first ten amendments, added in 1791 at the Anti-federalists' insistence to protect individual liberties against the new federal government."],
+[2,"Founders' Constitution","The original constitutional framework of 1787, built on design principles including federalism, separation of powers, checks and balances, popular sovereignty, limited government, and republicanism."],
+[2,"Great Compromise (Connecticut Compromise)","The Convention's settlement of the representation dispute, creating a bicameral legislature with population-based representation in the House and equal representation in the Senate."],
+[2,"Virginia Plan (Large State Plan)","The proposal for a strong national government with legislative representation proportional to state population, favored by large states."],
+[2,"New Jersey Plan (Small State Plan)","The counter-proposal to keep a single-house legislature with equal representation for each state, preserving state sovereignty."],
+[2,"Three-Fifths Compromise","The agreement to count enslaved people as three-fifths of a person for purposes of apportioning representation and direct taxation."],
+[2,"Electoral College","The body of electors that chooses the president, a compromise between direct popular election and selection by Congress."],
+[2,"Slave Trade Clauses","The constitutional provision barring Congress from banning the international slave trade before 1808."],
+[2,"Fugitive Slave Clause","The constitutional provision requiring that escaped enslaved people be returned to their owners rather than freed by other states."],
+[2,"Federalism","The constitutional division of power between the national government and the state governments, each supreme within its own sphere."],
+[2,"Popular sovereignty","The principle that government's authority derives from the people, expressed in the Preamble (\"We the People\") and in ratification by state conventions."],
+[2,"Direct democracy","A system in which citizens vote directly on laws and policy rather than through representatives."],
+[2,"Representative democracy","A system in which citizens elect officials to make decisions on their behalf, the form the Founders chose for the United States."],
+[2,"Bicameralism","A two-house legislature, chosen by the Founders to slow legislation, let passions cool, and give both large and small states a voice."],
+[2,"Separation of powers / checks and balances","The distribution of government authority among legislative, executive, and judicial branches, each able to limit the others."],
+[2,"Civil liberties","Individual freedoms — such as speech, religion, and due process — protected from government interference."],
+[2,"Supremacy Clause","Article VI's provision making the Constitution, federal laws, and treaties the supreme Law of the Land, so federal law prevails over conflicting state law."],
+[2,"Federalist Papers","The essays by Hamilton, Madison, and Jay written to persuade the public to ratify the Constitution."],
+[2,"Federalists and Anti-federalists","The two sides of the ratification debate: Federalists supported the new Constitution, while Anti-federalists opposed it over fears of a distant, strong central government and pushed for a Bill of Rights."],
+[2,"Reconstruction Amendments","The 13th, 14th, and 15th amendments, which abolished slavery, established birthright citizenship with equal protection and due process, and barred denying the vote on the basis of race."],
+[2,"Birthright citizenship","Citizenship granted by virtue of being born in the United States, established by the 14th Amendment."],
+[2,"Second Founding","The post-Civil War transformation of the Constitution by the Reconstruction Amendments, which shifted it from protecting states' power over citizens to guaranteeing individual rights against the states."],
+[3,"Federalism","A system in which power is constitutionally divided between a central national government and state governments, each with its own sphere of authority."],
+[3,"Confederacy","A union of independent states bound by a weak central government that cannot tax, enforce, or bind the states, as under the Articles of Confederation."],
+[3,"Unitary national government","The opposite extreme of federalism, in which power is concentrated at the national level and states act only as its administrative subdivisions."],
+[3,"Concurrent powers","Powers shared by both levels of government, such as taxing, borrowing, establishing courts, enforcing contracts, and punishing crime."],
+[3,"Reserved powers","Powers kept by the states (or the people) because the Constitution did not give them to the national government, such as police power, education, and intrastate commerce."],
+[3,"Laboratories of democracy","The idea that states can experiment with policies and let successful ones be copied while failures are dropped, so innovation happens at the state level without betting the whole country."],
+[3,"Race to the bottom","The counter-argument that states competing for business and taxpayers will keep cutting standards such as wages, environmental rules, and taxes until no state dares regulate."],
+[3,"Enumerated (delegated) powers","The powers specifically listed in the Constitution and given to the national government, such as coining money, declaring war, and regulating interstate commerce."],
+[3,"Implied powers","Powers not listed in the Constitution but reasonably necessary to carry out the enumerated ones, derived from the Necessary and Proper Clause."],
+[3,"Judicial review","The power of the courts, ultimately the Supreme Court, to declare a law or action unconstitutional, the mechanism that has decided most federalism disputes."],
+[3,"Supremacy Clause","Article VI's provision that the Constitution, federal laws, and treaties are the \"supreme Law of the Land,\" so federal law wins when it conflicts with state law."],
+[3,"Tenth Amendment","The amendment stating that powers not delegated to the United States nor prohibited to the states are reserved to the states or the people."],
+[3,"Necessary and Proper (Elastic) Clause","Article I, §8's authorization for Congress to make all laws necessary and proper for executing its enumerated powers, the source of implied powers."],
+[3,"Amendment-enforcing provisions","Constitutional clauses, such as the enforcement clauses of the 14th and 15th Amendments, that let Congress enforce the Reconstruction Amendments against the states."],
+[3,"The police power","A state's authority to regulate behavior and enforce order for the health, safety, morals, and welfare of its citizens, covering education, licensing, zoning, and crime."],
+[3,"Dual federalism / \"layer-cake\" federalism","The early model (roughly 1790s–1930s) in which national and state governments operated in separate, non-overlapping spheres, each supreme in its own domain."],
+[3,"16th Amendment (1913)","The amendment that authorized the federal progressive income tax, giving the national government a durable revenue base beyond tariffs and excise taxes."],
+[3,"The progressive income tax","A tax whose rate rises with income, whose creation gave the federal government a large, stable revenue source and a new tool to influence states."],
+[3,"The New Deal (1930s, FDR)","The burst of national programs such as Social Security, the AAA, and the CWA that dramatically expanded federal power and began the shift away from dual federalism."],
+[3,"New Deal Federalism / Post-New Deal Cooperative Federalism","The modern model in which national and state governments overlap and cooperate through shared funding and programs rather than staying in separate layers, also called marble-cake federalism."],
+[3,"The modern welfare state","The system of federal social programs such as Social Security, Medicare, and Medicaid that ties state administration to federal funding and rules."],
+[3,"The Great Society (1960s, LBJ)","The 1960s expansion of federal social programs, including Medicare, Medicaid, and the War on Poverty, that deepened cooperative federalism."],
+[3,"Grants-in-aid","Federal money given to states and localities for specific purposes, the main tool by which the federal government steers state policy."],
+[3,"Categorical grants","Grants restricted to a narrow, specific use, such as a highway grant usable only for highways, carrying the most federal control and paperwork."],
+[3,"Block grants","Grants for a broader category of spending, such as community development, that give states more flexibility with less federal control."],
+[3,"Devolution","The shift of power and responsibility from the national government back to the states, as in the 1996 welfare reform."],
+[3,"Principled federalism","A reform proposal to rebalance federalism by returning more power to the states and limiting the federal government's enumerated powers, rather than a settled system."]
+];
+
+// ratification order, with real dates
+var STATES = [
+["Delaware","Dec 7, 1787"],["Pennsylvania","Dec 12, 1787"],["New Jersey","Dec 18, 1787"],
+["Georgia","Jan 2, 1789"],["Connecticut","Jan 9, 1789"],["Massachusetts","Feb 6, 1789"],
+["Maryland","Apr 28, 1789"],["South Carolina","May 23, 1789"],["New Hampshire","Jun 21, 1789"],
+["Virginia","Jun 25, 1789"],["New York","Jul 26, 1789"],["North Carolina","Nov 21, 1789"],
+["Rhode Island","May 29, 1790"]
+];
+
+var CHNAME = {1:"Chapter 1",2:"Chapter 2",3:"Chapter 3"};
+
+// ---------- helpers ----------
+function norm(t){ return t.toLowerCase().replace(/\(.*?\)/g,"").replace(/\/.*/,"").replace(/[^a-z0-9 ]/g,"").replace(/\s+/g," ").trim(); }
+function shuffle(a){
+  for(var i=a.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var tmp=a[i]; a[i]=a[j]; a[j]=tmp; }
+  return a;
+}
+// terms whose normalized name appears in exactly one chapter (safe for "which chapter" questions)
+var nameChSet = {};
+TERMS.forEach(function(t){
+  var n = norm(t[1]);
+  nameChSet[n] = nameChSet[n] || {};
+  nameChSet[n][t[0]] = true;
+});
+function uniqueChapter(term){
+  var n = norm(term[1]);
+  var cs = Object.keys(nameChSet[n]);
+  return cs.length === 1 ? parseInt(cs[0],10) : null;
+}
+function distractors(correct, n){
+  var cn = norm(correct[1]);
+  var same = [], other = [];
+  TERMS.forEach(function(t){
+    if(t === correct) return;
+    if(norm(t[1]) === cn) return; // never offer the same term from another chapter
+    if(t[0] === correct[0]) same.push(t); else other.push(t);
+  });
+  return shuffle(same).concat(shuffle(other)).slice(0,n);
+}
+
+// ---------- question builders ----------
+// returns {label, prompt, promptIsTerm, options:[{text, right}], explain}
+function makeQuestion(term){
+  var types = ["define","term","tf"];
+  if(uniqueChapter(term)) types.push("chapter");
+  var type = types[Math.floor(Math.random()*types.length)];
+  if(type === "define"){
+    var opts = shuffle([term].concat(distractors(term,3)));
+    return {
+      label:"Which definition belongs to this term?",
+      show:term[1]+"  ("+CHNAME[term[0]]+")", promptIsTerm:true,
+      options:opts.map(function(t){ return {text:t[2], right:(t===term)}; }),
+      explain:term[1]+" ("+CHNAME[term[0]]+") — "+term[2]
+    };
+  }
+  if(type === "term"){
+    var o2 = shuffle([term].concat(distractors(term,3)));
+    return {
+      label:"Which term matches this definition?",
+      show:term[2], promptIsTerm:false,
+      options:o2.map(function(t){ return {text:t[1], right:(t===term)}; }),
+      explain:term[1]+" ("+CHNAME[term[0]]+") — "+term[2]
+    };
+  }
+  if(type === "tf"){
+    var fake = Math.random() < 0.5 ? null : distractors(term,1)[0];
+    var shown = fake || term;
+    var isTrue = (shown === term);
+    return {
+      label:"True or false — does this definition belong to the term?",
+      show:term[1]+" — "+shown[2], promptIsTerm:false,
+      options:[{text:"True", right:isTrue},{text:"False", right:!isTrue}],
+      explain:term[1]+" ("+CHNAME[term[0]]+") — "+term[2]
+    };
+  }
+  // chapter — show the term ALONE: the chapter tag would give it away
+  var chs = [1,2,3];
+  return {
+    label:"Which chapter does this term belong to?",
+    show:term[1], promptIsTerm:true,
+    options:chs.map(function(c){ return {text:CHNAME[c], right:(c===term[0])}; }),
+    explain:term[1]+" ("+CHNAME[term[0]]+") — "+term[2]
+  };
+}
+
+// ---------- game state ----------
+var S = {round:0, score:0, queue:[], misses:[], outcomes:[], locked:false, current:null};
+
+// ---------- dom ----------
+function $(id){ return document.getElementById(id); }
+function show(id){
+  ["scr-start","scr-q","scr-end"].forEach(function(s){ $(s).classList.remove("on"); });
+  $(id).classList.add("on");
+}
+function renderBoard(){
+  var b = $("board");
+  b.innerHTML = "";
+  STATES.forEach(function(st, i){
+    var d = document.createElement("div");
+    d.className = "state";
+    d.id = "st" + i;
+    d.innerHTML = '<span class="sname">'+st[0]+'</span><span class="sdate">'+st[1]+'</span>';
+    b.appendChild(d);
+  });
+}
+function setChip(i, cls){
+  var el = $("st"+i);
+  el.className = "state " + cls;
+}
+function updateScore(){
+  $("scorebig").textContent = S.score + " / 13";
+}
+
+function start(){
+  S = {round:0, score:0, queue:shuffle(TERMS.slice()).slice(0,13), misses:[], outcomes:[], locked:false, current:null};
+  renderBoard();
+  updateScore();
+  show("scr-q");
+  nextRound();
+}
+
+function nextRound(){
+  if(S.round >= 13){ end(); return; }
+  S.current = S.queue[S.round];
+  S.locked = false;
+  for(var i=0;i<13;i++){
+    if(i < S.round) setChip(i, S.outcomes[i] ? "ratified" : "rejected");
+    else if(i === S.round) setChip(i, "current");
+    else setChip(i, "");
+  }
+  $("qstate").innerHTML = "State " + (S.round+1) + " of 13 votes &middot; <b>" + STATES[S.round][0] + "</b>";
+  var q = makeQuestion(S.current);
+  S.q = q;
+  $("qlabel").textContent = q.label;
+  var body = $("qbody");
+  body.innerHTML = "";
+  var p = document.createElement("div");
+  p.id = q.promptIsTerm ? "qterm" : "qdef";
+  p.textContent = q.show;
+  body.appendChild(p);
+  var opts = $("opts");
+  opts.innerHTML = "";
+  q.options.forEach(function(o, idx){
+    var btn = document.createElement("button");
+    btn.className = "opt";
+    btn.textContent = o.text;
+    btn.dataset.i = idx;
+    btn.addEventListener("click", function(){ answer(idx); });
+    opts.appendChild(btn);
+  });
+  $("feedback").innerHTML = "";
+  $("next").style.display = "none";
+}
+
+function answer(idx){
+  if(S.locked) return;
+  S.locked = true;
+  var q = S.q;
+  var right = q.options[idx].right;
+  var btns = document.querySelectorAll("#opts .opt");
+  btns.forEach(function(b){
+    b.disabled = true;
+    var i = parseInt(b.dataset.i,10);
+    if(q.options[i].right) b.classList.add("right");
+    else if(i === idx) b.classList.add("wrong");
+    else b.classList.add("dim");
+  });
+  var ok = right;
+  S.outcomes[S.round] = ok;
+  if(ok){ S.score++; }
+  else { S.misses.push(S.current); }
+  setChip(S.round, ok ? "ratified" : "rejected");
+  updateScore();
+  $("feedback").innerHTML =
+    '<span class="tag '+(ok?"ok":"no")+'">'+(ok?"Ratified":"Rejected")+'</span>' +
+    (ok ? "" : '<span style="color:#cfc5b0">'+q.explain+"</span>");
+  var nx = $("next");
+  nx.textContent = (S.round === 12) ? "Final vote →" : "Next state →";
+  nx.style.display = "inline-block";
+}
+
+function end(){
+  show("scr-end");
+  for(var i=0;i<13;i++){
+    setChip(i, S.outcomes[i] ? "ratified" : "rejected");
+  }
+  var s = S.score;
+  var v, sub;
+  if(s === 13){ v = "Unanimous."; sub = "Thirteen of thirteen. The Founders weep into their quills."; }
+  else if(s >= 9){ v = "Ratified."; sub = (13 - s) + " state" + (13-s===1?"":"s") + " said no, and it still passed — exactly like 1787. A republic, barely."; }
+  else if(s >= 7){ v = "One or two votes short."; sub = "The Articles stand (for now). The convention adjourns in frustrated silence."; }
+  else if(s >= 4){ v = "The convention adjourns in confusion."; sub = "Half the floor walked out. Someone is already drafting a petition."; }
+  else { v = "Shay's Rebellion by morning."; sub = "The floor is a war zone. The Articles stand, and everyone knows it."; }
+  $("verdict").textContent = v;
+  $("verdictsub").innerHTML = "<b style='color:var(--amber)'>"+s+" / 13</b> &middot; " + sub;
+  var mw = $("misswrap");
+  mw.innerHTML = "";
+  if(S.misses.length){
+    var h = document.createElement("h3");
+    h.className = "miss";
+    h.textContent = "The " + S.misses.length + " term" + (S.misses.length===1?"":"s") + " that rejected you";
+    mw.appendChild(h);
+    S.misses.forEach(function(t){
+      var d = document.createElement("div");
+      d.className = "missitem";
+      d.innerHTML = "<span class='mt'>"+t[1]+"</span> <span style='color:#57503f'>("+CHNAME[t[0]]+")</span><br><span class='md'>"+t[2]+"</span>";
+      mw.appendChild(d);
+    });
+  } else {
+    var d2 = document.createElement("div");
+    d2.className = "missitem";
+    d2.innerHTML = "<span class='md'>No rejections. Every definition held.</span>";
+    mw.appendChild(d2);
+  }
+}
+renderBoard();
+$("btn-start").addEventListener("click", start);
+$("btn-again").addEventListener("click", start);
+$("next").addEventListener("click", function(){ S.round++; nextRound(); });
+</script>
+</body>
+</html>

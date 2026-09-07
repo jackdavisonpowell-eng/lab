@@ -1,0 +1,419 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HORSE TINDER</title>
+<style>
+  :root{
+    --bg:#0a0908; --ink:#f5f2ec; --amber:#ffb454; --dim:#8a8378; --line:#2a251f;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:
+      repeating-linear-gradient(135deg, rgba(255,180,84,.035) 0 2px, transparent 2px 28px),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Helvetica Neue",Arial,sans-serif;
+    display:flex;flex-direction:column;align-items:center;
+    overflow:hidden;
+    user-select:none;-webkit-user-select:none;
+  }
+  .display{font-family:Impact,"Arial Black","Helvetica Neue",sans-serif;font-style:italic;letter-spacing:.05em;text-transform:uppercase}
+  header{width:100%;max-width:600px;padding:16px 20px 4px;display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+  h1{font-size:36px;line-height:.9}
+  h1 em{color:var(--amber)}
+  .tag{font-size:10px;color:var(--dim);letter-spacing:.28em;text-transform:uppercase;margin-top:6px}
+  .score{display:flex;gap:16px;text-align:right}
+  .score .n{font-size:32px;line-height:1}
+  .score .n.best{color:var(--amber)}
+  .score .l{font-size:9px;letter-spacing:.22em;color:var(--dim);text-transform:uppercase;margin-top:2px}
+  .youbar{width:100%;max-width:600px;display:flex;align-items:center;gap:10px;padding:8px 20px 0}
+  .youbar .youhorse{width:44px;height:44px;flex:none;border:1px solid var(--line);padding:2px;background:#100d0a}
+  .youbar .youtext{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--dim)}
+  .youbar .youtext b{color:var(--amber);font-weight:700}
+  main{flex:1;width:100%;max-width:600px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:6px 20px 10px}
+  .deck{position:relative;width:340px;height:468px}
+  .card{
+    position:absolute;inset:0;
+    background:linear-gradient(180deg,#181310 0%,#100d0a 100%);
+    border:1px solid var(--line);
+    clip-path:polygon(0 0,calc(100% - 26px) 0,100% 26px,100% 100%,26px 100%,0 calc(100% - 26px));
+    display:flex;flex-direction:column;
+    touch-action:none;cursor:grab;
+    will-change:transform;
+  }
+  .card .art{height:238px;flex:none;display:flex;align-items:center;justify-content:center;
+    background:repeating-linear-gradient(45deg, rgba(255,180,84,.05) 0 1px, transparent 1px 14px)}
+  .card .art svg{width:220px;height:220px}
+  .card .name{font-size:30px;padding:10px 16px 0;line-height:1}
+  .card .title{font-size:11px;color:var(--amber);letter-spacing:.14em;text-transform:uppercase;padding:4px 16px 0}
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);margin:12px 16px;border:1px solid var(--line)}
+  .stat{background:#120f0c;padding:8px 10px 6px}
+  .stat .v{font-size:26px;line-height:1;color:var(--ink)}
+  .stat .v.hot{color:var(--amber)}
+  .stat .k{font-size:8px;letter-spacing:.2em;color:var(--dim);text-transform:uppercase;margin-top:3px}
+  .bio{font-size:12.5px;line-height:1.45;color:#cfc8ba;padding:0 16px;font-style:italic}
+  .looking{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--amber);padding:8px 16px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stamp{position:absolute;top:18px;font-size:30px;opacity:0;pointer-events:none;padding:2px 10px;border:3px solid}
+  .stamp.right{right:14px;color:var(--amber);border-color:var(--amber);transform:rotate(12deg)}
+  .stamp.left{left:14px;color:var(--ink);border-color:var(--ink);transform:rotate(-12deg)}
+  .controls{display:flex;gap:22px;margin-top:18px}
+  .btn{
+    font-family:Impact,"Arial Black",sans-serif;font-style:italic;text-transform:uppercase;
+    font-size:20px;letter-spacing:.08em;
+    background:transparent;color:var(--ink);
+    border:2px solid var(--ink);
+    clip-path:polygon(0 0,calc(100% - 14px) 0,100% 14px,100% 100%,14px 100%,0 calc(100% - 14px));
+    padding:12px 30px;cursor:pointer;
+  }
+  .btn:hover{background:rgba(245,242,236,.08)}
+  .btn.match{color:var(--amber);border-color:var(--amber)}
+  .btn.match:hover{background:rgba(255,180,84,.12)}
+  .hint{font-size:9px;letter-spacing:.24em;color:var(--dim);text-transform:uppercase;margin-top:12px}
+  #overlay{
+    position:fixed;inset:0;background:rgba(8,7,5,.94);
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:18px;z-index:10;
+  }
+  #overlay.on{display:flex}
+  .ov-horses{display:flex;align-items:center;gap:26px}
+  .ov-horse{width:150px;height:150px;border:1px solid var(--line);background:#14100c;display:flex;align-items:center;justify-content:center;
+    clip-path:polygon(0 0,calc(100% - 18px) 0,100% 18px,100% 100%,18px 100%,0 calc(100% - 18px))}
+  .ov-horse svg{width:130px;height:130px}
+  .ov-vs{font-size:22px;color:var(--dim)}
+  #ovTitle{font-size:56px;color:var(--amber);line-height:1}
+  #ovWhy{font-size:13px;font-style:italic;color:#cfc8ba;letter-spacing:.04em}
+  #ovCount{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--dim)}
+  #ovCount b{color:var(--ink);font-size:16px}
+  #ovBtn{margin-top:8px}
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 class="display">HORSE <em>TINDER</em></h1>
+    <div class="tag">swipe right on destiny</div>
+  </div>
+  <div class="score">
+    <div><div class="n display" id="swipes">0</div><div class="l">swipes</div></div>
+    <div><div class="n display" id="matches">0</div><div class="l">matches</div></div>
+    <div><div class="n display best" id="best">0</div><div class="l">best night</div></div>
+  </div>
+</header>
+<div class="youbar">
+  <div class="youhorse" id="youHorse"></div>
+  <div class="youtext" id="youText"></div>
+</div>
+<main>
+  <div class="deck" id="deck"></div>
+  <div class="controls">
+    <button class="btn" id="nopeBtn">NOPE</button>
+    <button class="btn match" id="matchBtn">MATCH</button>
+  </div>
+  <div class="hint">&#8592; &#8594; keys or drag the card</div>
+</main>
+<div id="overlay">
+  <div class="ov-horses">
+    <div class="ov-horse" id="ovYou"></div>
+    <div class="ov-vs display">VS</div>
+    <div class="ov-horse" id="ovHorse"></div>
+  </div>
+  <div id="ovTitle" class="display">IT'S A MATCH</div>
+  <div id="ovWhy"></div>
+  <div id="ovCount"></div>
+  <button class="btn match" id="ovBtn">KEEP SWIPING</button>
+</div>
+<script>
+"use strict";
+// ---------- rng ----------
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function pick(r,arr){return arr[Math.floor(r()*arr.length)]}
+function ri(r,a,b){return a+Math.floor(r()*(b-a+1))}
+
+// ---------- content ----------
+var STATS=["HOOVES","FLAIR","CHAOS","GROOM","VIBE","MOO"];
+var S1=["HOR","SE","KEL","DRA","GON","ZAN","THOR","BUL","KA","REN","DUS","MOR","VEL","GRIM","TAN","FUR","WYN","SKA","LOK","BRU","NOR","HAL","VEX","MAL","PIN","OR"];
+var S2=["US","A","O","EK","IR","UM","IX","LA","ON","IS","AR","EN","OTH","AG","UL","IN","AS","OR"];
+var TITLES=["the Unbothered","of the Third Field","Who Has Seen Things","the Slightly Damp","of the North Fence","Who Knows","the Ambitious","of the Hayloft","the Unhinged","Who Judges You","of the Quiet Gate","the Magnificent","Who Outran the Tractor","of the Long Nap","the Unstoppable","of the Last Oat","Who Files Everything","the Considered"];
+var BIOS=[
+"Runs the north fence like it owes him money.",
+"Will not make eye contact. Will make hoof contact.",
+"Three braids. Zero apologies.",
+"Asks for the same hay. Every time. On purpose.",
+"Has opinions about the moon. The moon has opinions back.",
+"Was once a champion. The trophy is in a different state now.",
+"Gallops at exactly 5:47 a.m. Do not ask why.",
+"Smells like rain and mild ambition.",
+"Has been to a spa. Denies the spa.",
+"Knows the secret word. Won't say it.",
+"The barn's unofficial therapist.",
+"Eats your boots. Keeps the receipts.",
+"Has a podcast. One episode. About oats.",
+"Judges you. Gently. With its eyes.",
+"Sleeps standing up. Dreams of sitting.",
+"Once outran a tractor. The tractor forgave him.",
+"His mane is a lifestyle choice.",
+"The vet is on a first-name basis. He prefers initials.",
+"Runs the field like a board meeting.",
+"Has a deal with the moon. Terms unknown.",
+"Will trade hay for secrets.",
+"The other horses know what he did.",
+"Wears a halter to look busy.",
+"Has a system for the gate. It is not a good system.",
+"His favorite sound is a hay bale splitting open.",
+"Knows all the other horses' business. Files it carefully."
+];
+var LOOKING=[
+"someone to outrun","a fence worth running","the last good oat","a co-conspirator",
+"quiet, mostly","a partner in fence-sitting","someone who checks the gate twice",
+"the north field, after dark","a long nap with no agenda","someone who knows the secret word"
+];
+var PALS=[
+{body:"#221a13",dark:"#15100a",mane:"#ffb454",accent:"#f5f2ec"},
+{body:"#efe7d8",dark:"#c9bda4",mane:"#141210",accent:"#ffb454"},
+{body:"#141210",dark:"#0a0908",mane:"#efe7d8",accent:"#ffb454"},
+{body:"#33261a",dark:"#211a11",mane:"#ffb454",accent:"#efe7d8"},
+{body:"#e8dcc4",dark:"#c2b28f",mane:"#221a13",accent:"#ffb454"},
+{body:"#2a2118",dark:"#191309",mane:"#ffb454",accent:"#efe7d8"}
+];
+
+// ---------- horse generation ----------
+var seq=0;
+function genHorse(){
+  var seed=(Date.now()^ (seq*2654435761) ^ (Math.random()*1e9))>>>0;
+  var r=mulberry32(seed);
+  seq++;
+  var name=pick(r,S1)+pick(r,S2);
+  if(r()<0.35) name=pick(r,S1)+name;
+  var stats={};
+  var max=0;
+  STATS.forEach(function(s){stats[s]=ri(r,1,10); if(stats[s]>max)max=stats[s];});
+  if(max<7){var s=pick(r,STATS); stats[s]=ri(r,7,10); max=stats[s];}
+  var dom=STATS[0];
+  STATS.forEach(function(s){if(stats[s]>stats[dom])dom=s;});
+  var acc=pick(r,["none","none","monocle","halter","braids","mohawk","nostril","star"]);
+  return {
+    seed:seed, name:name, title:pick(r,TITLES), stats:stats, dom:dom,
+    bio:pick(r,BIOS), looking:pick(r,LOOKING),
+    pal:pick(r,PALS),
+    maneN:ri(r,5,9), maneLen:ri(r,16,30),
+    acc:acc, eyeStyle:ri(r,0,2)
+  };
+}
+
+// ---------- svg ----------
+function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
+function lerp(a,b,t){return {x:a.x+(b.x-a.x)*t, y:a.y+(b.y-a.y)*t}}
+function f(n){return Math.round(n*10)/10}
+function horseSVG(h){
+  var r=mulberry32(h.seed);
+  function j(v,a){a=a||4;return f(v+(r()*2-1)*a)}
+  var P={
+    A:{x:j(78),y:j(58)}, B:{x:j(112),y:j(44)}, C:{x:j(140),y:j(58)},
+    D:{x:j(186),y:j(102)}, E:{x:j(194),y:j(116)}, F:{x:j(172),y:j(132)},
+    G:{x:j(122),y:j(152)}, H:{x:j(88),y:j(178)}, I:{x:j(66),y:j(122)},
+    K:{x:j(36,6),y:220}, J:{x:j(158,6),y:220}
+  };
+  var pal=h.pal, out="";
+  // far ear (behind head)
+  out+='<polygon points="'+f(P.B.x-8)+','+f(P.B.y+8)+' '+f(P.B.x+6)+','+f(P.B.y-30)+' '+f(P.B.x+20)+','+f(P.B.y+10)+'" fill="'+pal.dark+'"/>';
+  // neck (behind head)
+  out+='<polygon points="'+P.H.x+','+P.H.y+' '+P.G.x+','+P.G.y+' '+P.J.x+','+P.J.y+' '+P.K.x+','+P.K.y+'" fill="'+pal.body+'"/>';
+  // mane spikes along A -> I -> H
+  var pts=[P.A,P.I,P.H],segs=[],total=0;
+  for(var i=0;i<pts.length-1;i++){var d=dist(pts[i],pts[i+1]);segs.push(d);total+=d;}
+  function pointAt(t){var d=t*total;for(var k=0;k<segs.length;k++){if(d<=segs[k])return lerp(pts[k],pts[k+1],d/segs[k]);d-=segs[k];}return pts[2];}
+  var n=h.maneN;
+  for(i=0;i<n;i++){
+    var t0=i/(n-1),t1=Math.min(1,(i+0.65)/(n-1));
+    var p0=pointAt(t0),p1=pointAt(t1);
+    var dx=p1.x-p0.x,dy=p1.y-p0.y,L=Math.hypot(dx,dy)||1;
+    var nx=-dy/L,ny=dx/L;
+    if(nx>0){nx=-nx;ny=-ny;}
+    var len=h.maneLen*(0.7+r()*0.6);
+    out+='<polygon points="'+f(p0.x)+','+f(p0.y)+' '+f(p1.x)+','+f(p1.y)+' '+f(p0.x+nx*len)+','+f(p0.y+ny*len)+'" fill="'+pal.mane+'"/>';
+  }
+  // head
+  out+='<polygon points="'+P.A.x+','+P.A.y+' '+P.B.x+','+P.B.y+' '+P.C.x+','+P.C.y+' '+P.D.x+','+P.D.y+' '+P.E.x+','+P.E.y+' '+P.F.x+','+P.F.y+' '+P.G.x+','+P.G.y+' '+P.H.x+','+P.H.y+' '+P.I.x+','+P.I.y+'" fill="'+pal.body+'"/>';
+  // near ear
+  out+='<polygon points="'+f(P.A.x+4)+','+f(P.A.y+4)+' '+f(P.A.x+14)+','+f(P.A.y-32)+' '+f(P.A.x+26)+','+f(P.A.y+8)+'" fill="'+pal.body+'"/>';
+  out+='<polygon points="'+f(P.A.x+9)+','+f(P.A.y+2)+' '+f(P.A.x+15)+','+f(P.A.y-22)+' '+f(P.A.x+21)+','+f(P.A.y+6)+'" fill="'+pal.dark+'"/>';
+  // zigzag across neck
+  var zz="";var zx=54;
+  while(zx<146){zz+=f(zx)+',196 '+f(zx+6)+',188 ';zx+=12;}
+  out+='<polyline points="'+zz+'" fill="none" stroke="'+pal.accent+'" stroke-width="2"/>';
+  // eye
+  var ex=130,ey=86;
+  if(h.eyeStyle===0){
+    out+='<polygon points="'+ex+','+(ey-8)+' '+(ex+10)+','+ey+' '+ex+','+(ey+8)+' '+(ex-10)+','+ey+'" fill="'+pal.accent+'"/>';
+    out+='<polygon points="'+ex+','+(ey-3)+' '+(ex+3)+','+ey+' '+ex+','+(ey+3)+' '+(ex-3)+','+ey+'" fill="'+pal.dark+'"/>';
+  }else if(h.eyeStyle===1){
+    out+='<circle cx="'+ex+'" cy="'+ey+'" r="7" fill="'+pal.accent+'"/>';
+    out+='<circle cx="'+ex+'" cy="'+ey+'" r="3" fill="'+pal.dark+'"/>';
+  }else{
+    out+='<polygon points="'+(ex-9)+','+ey+' '+(ex+9)+','+ey+' '+ex+','+(ey-9)+'" fill="'+pal.accent+'"/>';
+    out+='<circle cx="'+ex+'" cy="'+(ey-2)+'" r="2.4" fill="'+pal.dark+'"/>';
+  }
+  // nostril + mouth
+  out+='<polygon points="'+f(P.D.x-10)+','+f(P.D.y+10)+' '+f(P.D.x-1)+','+f(P.D.y+8)+' '+f(P.D.x-5)+','+f(P.D.y+19)+'" fill="'+pal.dark+'"/>';
+  out+='<line x1="'+P.F.x+'" y1="'+P.F.y+'" x2="'+f(P.F.x-24)+'" y2="'+f(P.F.y+8)+'" stroke="'+pal.dark+'" stroke-width="2"/>';
+  // accessories
+  if(h.acc==="monocle"){
+    out+='<circle cx="'+ex+'" cy="'+ey+'" r="12" fill="none" stroke="'+pal.accent+'" stroke-width="2"/>';
+    out+='<line x1="'+(ex+8)+'" y1="'+(ey+9)+'" x2="'+(ex+14)+'" y2="'+(ey+26)+'" stroke="'+pal.accent+'" stroke-width="2"/>';
+  }else if(h.acc==="halter"){
+    out+='<polyline points="'+f(P.C.x)+','+f(P.C.y+4)+' '+f(P.G.x)+','+f(P.G.y-2)+' '+f(P.F.x-4)+','+f(P.F.y-2)+'" fill="none" stroke="'+pal.accent+'" stroke-width="2.5"/>';
+    out+='<circle cx="'+f(P.F.x-6)+'" cy="'+f(P.F.y-2)+'" r="4" fill="none" stroke="'+pal.accent+'" stroke-width="2"/>';
+  }else if(h.acc==="braids"){
+    for(i=0;i<3;i++){var bp=pointAt(0.15+i*0.3);out+='<circle cx="'+f(bp.x-6)+'" cy="'+f(bp.y+6)+'" r="6" fill="'+pal.mane+'" stroke="'+pal.dark+'" stroke-width="1.5"/>';}
+  }else if(h.acc==="mohawk"){
+    var mp=[P.A,P.B,P.C];
+    for(i=0;i<5;i++){
+      var m0=lerp(P.A,P.C,i/4),m1=lerp(P.A,P.C,(i+0.5)/4);
+      out+='<polygon points="'+f(m0.x)+','+f(m0.y)+' '+f(m1.x)+','+f(m1.y)+' '+f((m0.x+m1.x)/2)+','+f(m0.y-26-r()*10)+'" fill="'+pal.accent+'"/>';
+    }
+  }else if(h.acc==="nostril"){
+    out+='<circle cx="'+f(P.E.x-2)+'" cy="'+f(P.E.y+2)+'" r="6" fill="none" stroke="'+pal.accent+'" stroke-width="2.5"/>';
+  }else if(h.acc==="star"){
+    var sx=P.B.x+4,sy=P.B.y+14;
+    out+='<polygon points="'+sx+','+(sy-7)+' '+f(sx+2)+','+(sy-2)+' '+(sx+7)+','+sy+' '+f(sx+2)+','+(sy+2)+' '+sx+','+(sy+7)+' '+f(sx-2)+','+(sy+2)+' '+(sx-7)+','+sy+' '+f(sx-2)+','+(sy-2)+'" fill="'+pal.accent+'"/>';
+  }
+  return '<svg viewBox="0 0 220 220" xmlns="http://www.w3.org/2000/svg">'+out+'</svg>';
+}
+
+// ---------- you ----------
+var YOU=genHorse();
+YOU.name="YOU";
+(function(){var r=mulberry32(YOU.seed^99);var a=pick(r,STATS),b=pick(r,STATS);while(b===a)b=pick(r,STATS);YOU.int=a;YOU.into=b;})();
+
+// ---------- state ----------
+var state={swipes:0,matches:0,best:0,current:null,busy:false};
+try{state.best=parseInt(localStorage.getItem("ht_best")||"0",10)||0;}catch(e){}
+function saveBest(){try{localStorage.setItem("ht_best",String(state.best));}catch(e){}}
+
+// ---------- dom ----------
+var deck=document.getElementById("deck");
+var swEl=document.getElementById("swipes"),maEl=document.getElementById("matches"),beEl=document.getElementById("best");
+function bump(el,d){el.textContent=String(el.textContent|0+d);var s=el;requestAnimationFrame(function(){s.style.transform="scale(1.35)";s.style.color="#ffb454";setTimeout(function(){s.style.transform="";s.style.color="";},160);});}
+function updateScore(){swEl.textContent=state.swipes;maEl.textContent=state.matches;beEl.textContent=state.best;}
+
+function statHTML(h){
+  return STATS.map(function(s){
+    return '<div class="stat"><div class="v display'+(s===h.dom?" hot":"")+'">'+h.stats[s]+'</div><div class="k">'+s+'</div></div>';
+  }).join("");
+}
+function cardHTML(h){
+  return '<div class="art">'+horseSVG(h)+'</div>'+
+    '<div class="name display">'+h.name+'</div>'+
+    '<div class="title">'+h.title+'</div>'+
+    '<div class="stats">'+statHTML(h)+'</div>'+
+    '<div class="bio">'+h.bio+'</div>'+
+    '<div class="looking">looking for: '+h.looking+'</div>'+
+    '<div class="stamp display right">MATCH?</div>'+
+    '<div class="stamp display left">NOPE</div>';
+}
+function isMatch(h){
+  if(h.dom===YOU.int||h.dom===YOU.into)return true;
+  return Math.random()<0.12;
+}
+function matchReason(h){
+  if(h.dom===YOU.int)return "shared "+h.dom+" — that's a whole personality";
+  if(h.dom===YOU.into)return "your "+YOU.int+" and his "+h.dom+" are a known quantity";
+  return "he likes your energy. nobody knows why";
+}
+
+function nextHorse(){
+  state.current=genHorse();
+  var el=document.createElement("div");
+  el.className="card";
+  el.innerHTML=cardHTML(state.current);
+  el.style.transform="scale(.92) translateY(14px)";
+  el.style.opacity="0";
+  deck.appendChild(el);
+  requestAnimationFrame(function(){requestAnimationFrame(function(){
+    el.style.transition="transform .18s ease-out, opacity .18s ease-out";
+    el.style.transform="scale(1) translateY(0)";el.style.opacity="1";
+  });});
+  bindDrag(el);
+}
+
+function fly(el,dir,cb){
+  el.style.transition="transform .3s ease-in, opacity .3s ease-in";
+  el.style.transform="translateX("+(dir>0?620:-620)+"px) rotate("+(dir>0?28:-28)+"deg)";
+  el.style.opacity="0";
+  setTimeout(cb,300);
+}
+
+function swipe(dir){
+  if(state.busy||!state.current)return;
+  state.busy=true;
+  state.swipes++;
+  var h=state.current;
+  var el=deck.lastElementChild;
+  var m=dir>0&&isMatch(h);
+  if(m){state.matches++;if(state.matches>state.best){state.best=state.matches;saveBest();}}
+  updateScore();
+  fly(el,dir,function(){
+    el.remove();
+    if(m){showOverlay(h);}
+    nextHorse();
+    state.busy=false;
+  });
+}
+
+function showOverlay(h){
+  document.getElementById("ovYou").innerHTML=horseSVG(YOU);
+  document.getElementById("ovHorse").innerHTML=horseSVG(h);
+  document.getElementById("ovWhy").textContent=matchReason(h)+" — "+h.name+" "+h.title;
+  document.getElementById("ovCount").innerHTML="match <b>"+state.matches+"</b> this night &middot; best <b>"+state.best+"</b>";
+  document.getElementById("overlay").classList.add("on");
+}
+document.getElementById("ovBtn").addEventListener("click",function(){
+  document.getElementById("overlay").classList.remove("on");
+});
+
+// ---------- drag ----------
+function bindDrag(el){
+  var sx=0,sy=0,dx=0,dy=0,drag=false;
+  var sR=el.querySelector(".stamp.right"),sL=el.querySelector(".stamp.left");
+  el.addEventListener("pointerdown",function(e){
+    drag=true;sx=e.clientX;sy=e.clientY;dx=0;dy=0;
+    el.style.transition="none";
+    el.setPointerCapture(e.pointerId);
+  });
+  el.addEventListener("pointermove",function(e){
+    if(!drag)return;
+    dx=e.clientX-sx;dy=e.clientY-sy;
+    el.style.transform="translate("+dx+"px,"+dy+"px) rotate("+(dx/14)+"deg)";
+    sR.style.opacity=Math.max(0,Math.min(1,dx/70));
+    sL.style.opacity=Math.max(0,Math.min(1,-dx/70));
+  });
+  function up(){
+    if(!drag)return;drag=false;
+    sR.style.opacity=0;sL.style.opacity=0;
+    if(dx>80)swipe(1);
+    else if(dx<-80)swipe(-1);
+    else{el.style.transition="transform .2s ease-out";el.style.transform="scale(1) translateY(0)";}
+  }
+  el.addEventListener("pointerup",up);
+  el.addEventListener("pointercancel",up);
+}
+
+document.getElementById("nopeBtn").addEventListener("click",function(){swipe(-1);});
+document.getElementById("matchBtn").addEventListener("click",function(){swipe(1);});
+document.addEventListener("keydown",function(e){
+  if(e.key==="ArrowLeft")swipe(-1);
+  else if(e.key==="ArrowRight")swipe(1);
+  else if(e.key==="Enter"&&document.getElementById("overlay").classList.contains("on"))
+    document.getElementById("ovBtn").click();
+});
+
+// ---------- boot ----------
+document.getElementById("youHorse").innerHTML=horseSVG(YOU);
+document.getElementById("youText").innerHTML="you &mdash; dominant <b>"+YOU.int+"</b> &middot; into <b>"+YOU.into+"</b>";
+updateScore();
+nextHorse();
+</script>
+</body>
+</html>

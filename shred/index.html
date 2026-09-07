@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>shred</title>
+<style>
+  :root{
+    --bg:#050708; --ink:#c9d6d2; --dim:#5f7470; --amber:#e6c15a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    overflow:hidden;
+  }
+  body::after{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:9;
+    background:repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px);
+    mix-blend-mode:multiply; opacity:.45;
+  }
+  body.shake{animation:shk .45s linear}
+  @keyframes shk{
+    0%,100%{transform:translate(0,0)}
+    20%{transform:translate(-7px,3px)}
+    40%{transform:translate(6px,-4px)}
+    60%{transform:translate(-4px,2px)}
+    80%{transform:translate(3px,-1px)}
+  }
+  .hud{position:fixed; z-index:5}
+  .tl{top:20px; left:24px}
+  .tr{top:20px; right:24px; text-align:right}
+  .bl{bottom:20px; left:24px}
+  .br{bottom:20px; right:24px; text-align:right}
+  .title{font-size:15px; letter-spacing:.34em; text-transform:uppercase; color:var(--amber)}
+  .sub{color:var(--dim); font-size:11px; margin-top:3px}
+  .keys{color:var(--dim); font-size:11px; line-height:1.9}
+  .keys b{color:var(--ink); font-weight:600}
+  .main{
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-52%);
+    display:flex; gap:56px; align-items:stretch; z-index:4;
+  }
+  .reels{display:flex; gap:14px}
+  .reel{
+    width:212px; height:192px; position:relative; overflow:hidden;
+    border:1px solid #17211f; background:linear-gradient(180deg,#070b0c,#0a1012 50%,#070b0c);
+  }
+  .reel .strip{position:absolute; left:0; right:0; top:0; will-change:transform}
+  .reel .item{
+    height:64px; line-height:64px; text-align:center; white-space:nowrap;
+    font-size:16px; letter-spacing:.12em; text-transform:uppercase; color:var(--dim);
+    border-bottom:1px solid #0e1517;
+  }
+  .reel .item.mid{
+    color:var(--amber); font-weight:700; font-style:italic; font-size:18px;
+    text-shadow:0 0 14px rgba(230,193,90,.35);
+  }
+  .reel::before,.reel::after{
+    content:""; position:absolute; left:0; right:0; height:56px; z-index:2; pointer-events:none;
+  }
+  .reel::before{top:0; background:linear-gradient(180deg,var(--bg) 15%,transparent)}
+  .reel::after{bottom:0; background:linear-gradient(0deg,var(--bg) 15%,transparent)}
+  .panel{width:440px; display:flex; flex-direction:column; justify-content:center}
+  .cap{font-size:10px; letter-spacing:.28em; text-transform:uppercase; color:var(--dim); margin-bottom:6px}
+  .result{
+    font-size:32px; font-style:italic; font-weight:700; letter-spacing:-.01em;
+    color:var(--ink); line-height:1.15; min-height:76px;
+  }
+  .result.flash-l{animation:fl .7s ease-out}
+  .result.flash-b{animation:fb .7s ease-out}
+  @keyframes fl{0%{color:var(--amber); text-shadow:0 0 26px rgba(230,193,90,.9)}100%{}}
+  @keyframes fb{0%{color:#7c8a86; opacity:.35}100%{}}
+  .logrow{display:flex; gap:10px; margin-top:14px}
+  button{
+    font:inherit; font-size:13px; letter-spacing:.2em; text-transform:uppercase;
+    background:none; border:1px solid #24332f; color:var(--ink);
+    padding:11px 18px; cursor:pointer;
+  }
+  button:hover{border-color:var(--amber); color:var(--amber)}
+  button:disabled{opacity:.35; cursor:default}
+  button:disabled:hover{border-color:#24332f; color:var(--ink)}
+  button.spin{border-color:var(--amber); color:var(--amber); padding:11px 30px}
+  button.spin:hover{background:rgba(230,193,90,.08)}
+  .stats{display:flex; gap:34px; margin-top:26px}
+  .stat .n{
+    font-size:44px; font-style:italic; font-weight:700; line-height:1;
+    font-variant-numeric:tabular-nums; color:var(--ink);
+  }
+  .stat .l{font-size:10px; letter-spacing:.24em; text-transform:uppercase; color:var(--dim); margin-top:5px}
+  .heatwrap{margin-top:24px}
+  .heatbar{height:5px; background:#10181a; margin-top:8px}
+  .heatbar i{display:block; height:100%; width:0%; background:var(--amber); box-shadow:0 0 10px var(--amber); transition:width .5s ease}
+  .heatl{color:var(--amber); font-weight:600}
+  .hint{margin-top:18px; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--dim); transition:opacity .6s}
+  .hint.off{opacity:0}
+  .tablewrap{
+    position:fixed; left:24px; bottom:64px; z-index:4; width:640px; max-height:252px;
+    overflow-y:auto; border:1px solid #141d1b; background:rgba(7,11,12,.72);
+  }
+  .tablewrap::-webkit-scrollbar{width:6px}
+  .tablewrap::-webkit-scrollbar-thumb{background:#1d2a27}
+  table{width:100%; border-collapse:collapse; font-size:12px}
+  th{
+    text-align:left; font-size:9px; letter-spacing:.24em; text-transform:uppercase;
+    color:var(--dim); font-weight:400; padding:8px 12px 6px; border-bottom:1px solid #141d1b;
+    position:sticky; top:0; background:#0a1012;
+  }
+  td{padding:4px 12px; border-bottom:1px solid #0d1416; color:var(--ink); white-space:nowrap}
+  td.r,th.r{text-align:right}
+  td .pct{color:var(--dim)}
+  td .wr{color:var(--amber); font-style:italic; letter-spacing:.14em; font-size:10px; text-transform:uppercase}
+  .empty{color:var(--dim); font-size:11px; letter-spacing:.14em; padding:10px 12px}
+</style>
+</head>
+<body>
+
+<div class="hud tl">
+  <div class="title">shred</div>
+  <div class="sub">trick roulette · spin it, log it, earn the heat</div>
+</div>
+
+<div class="hud tr">
+  <div class="keys">
+    <b>space</b> spin the wheel<br>
+    <b>l</b> landed &nbsp;·&nbsp; <b>b</b> bailed
+  </div>
+</div>
+
+<div class="hud bl">
+  <div class="sub" id="totals">—</div>
+</div>
+
+<div class="hud br">
+  <div class="sub" id="resetwrap"><button id="reset" style="padding:5px 12px; font-size:10px">reset stats</button></div>
+</div>
+
+<div class="main">
+  <div class="reels">
+    <div class="reel" id="reel0"><div class="strip"></div></div>
+    <div class="reel" id="reel1"><div class="strip"></div></div>
+    <div class="reel" id="reel2"><div class="strip"></div></div>
+  </div>
+  <div class="panel">
+    <div class="cap">the call</div>
+    <div class="result" id="result">press space</div>
+    <div class="logrow">
+      <button class="spin" id="spin">spin</button>
+      <button id="logL" disabled>landed</button>
+      <button id="logB" disabled>bailed</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="streak">0</div><div class="l">landed streak</div></div>
+      <div class="stat"><div class="n" id="bstreak">0</div><div class="l">best streak</div></div>
+      <div class="stat"><div class="n" id="bailstreak">0</div><div class="l">bail streak</div></div>
+    </div>
+    <div class="heatwrap">
+      <div class="cap">heat — <span class="heatl" id="heatl">cold</span> <span id="heatpct">0%</span></div>
+      <div class="heatbar"><i id="heatbar"></i></div>
+    </div>
+    <div class="hint" id="hint">spin, then log the outcome — heat decays with every bail</div>
+  </div>
+</div>
+
+<div class="tablewrap" id="tablewrap">
+  <div class="empty" id="empty">no tricks logged yet</div>
+  <table id="ttab" style="display:none">
+    <thead><tr><th>trick</th><th class="r">landed</th><th class="r">bailed</th><th class="r">rate</th><th class="r">flag</th></tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+(function(){
+"use strict";
+var TRICKS=["ollie","pop shuvit","kickflip","heelflip","pop shoveit","varial kickflip","hardflip","360 flip","360 flip out","impossible","nollie heelflip","nollie kickflip","nollie 360 flip","nollie varial flip","switch kickflip","switch heelflip","switch 360 flip","tre flip","lazy","cork 540 flip","fakie kickflip","fakie heelflip","fakie 360 flip","fakie nollie heelflip"];
+var STANCES=["regular","goofy","switch"];
+var SPOTS=["quarter pipe","2nd gap","12-stair","handrail","ledge","bowl lip","flat ground","coping","bank","curb","hubba","ledge to stair"];
+var KEY="shred.stats.v1";
+var ITEM_H=64, MID=1;
+var state={spinning:false, pending:false, result:null};
+
+function $(id){return document.getElementById(id)}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function mod(a,n){return ((a%n)+n)%n}
+
+function load(){
+  try{
+    var s=JSON.parse(localStorage.getItem(KEY)||"null");
+    if(s && s.tricks) return s;
+  }catch(e){}
+  return {landed:0, bailed:0, streak:0, best:0, bailstreak:0, results:[], tricks:{}};
+}
+function save(){ localStorage.setItem(KEY, JSON.stringify(S)); }
+var S=load();
+
+function heat(){
+  var r=S.results.slice(-14), w=0, v=0;
+  for(var i=0;i<r.length;i++){
+    var wt=Math.pow(1.25,i);
+    w+=wt; v+=(r[i]===1?1:0)*wt;
+  }
+  return w? v/w : 0;
+}
+function heatLabel(h){
+  if(h>=0.85) return "shred";
+  if(h>=0.7) return "hot";
+  if(h>=0.5) return "warm";
+  if(h>=0.3) return "cool";
+  return "cold";
+}
+
+function render(){
+  $("streak").textContent=S.streak;
+  $("bstreak").textContent=S.best;
+  $("bailstreak").textContent=S.bailstreak;
+  var h=heat(), pct=Math.round(h*100);
+  $("heatbar").style.width=pct+"%";
+  $("heatpct").textContent=pct+"%";
+  $("heatl").textContent=heatLabel(h);
+  $("totals").textContent=S.landed+" landed · "+S.bailed+" bailed · best "+S.best;
+  var names=Object.keys(S.tricks);
+  if(!names.length){
+    $("empty").style.display="block";
+    $("ttab").style.display="none";
+    return;
+  }
+  $("empty").style.display="none";
+  $("ttab").style.display="table";
+  names.sort(function(a,b){
+    var ta=S.tricks[a], tb=S.tricks[b];
+    return (tb.l+tb.b)-(ta.l+ta.b);
+  });
+  var rows="";
+  for(var i=0;i<names.length;i++){
+    var t=S.tricks[names[i]];
+    var tot=t.l+t.b, rate=tot? Math.round(100*t.l/tot):0;
+    var wreck=(t.b>=2 && t.l===0) ? '<span class="wr">wreck</span>' : "";
+    rows+="<tr><td>"+names[i]+"</td><td class='r'>"+t.l+"</td><td class='r'>"+t.b+"</td><td class='r'><span class='pct'>"+rate+"%</span></td><td class='r'>"+wreck+"</td></tr>";
+  }
+  $("tbody").innerHTML=rows;
+}
+
+/* ---- slot reels ---------------------------------------------------
+   Strip is a long periodic list: item j shows items[(o+j) % L].
+   Start: translateY(-MID*ITEM_H)  -> strip[MID] at reel center.
+   End:   translateY(-F*ITEM_H), F = MID + extra*L, strip[F] at center.
+   (o+F) % L == target  =>  o = mod(target-F, L). Seamless snap, exact target. */
+function buildStrip(strip, items, offset){
+  var L=items.length, extra=5+Math.floor(Math.random()*4);
+  var F=MID+extra*L;
+  var o=mod(offset-F,L);
+  var html="";
+  for(var j=0;j<=F+2;j++) html+="<div class='item'></div>";
+  strip.innerHTML=html;
+  var kids=strip.children;
+  for(var k=0;k<=F+2;k++) kids[k].textContent=items[mod(o+k,L)];
+  return {F:F, o:o};
+}
+
+function spinReel(reelEl, items, target, delay, dur, onDone){
+  var strip=reelEl.querySelector(".strip");
+  var meta=buildStrip(strip, items, target);
+  var F=meta.F;
+  var yStart=-MID*ITEM_H, yEnd=-F*ITEM_H;
+  var dist=yEnd-yStart;
+  strip.style.transform="translateY("+yStart+"px)";
+  var t0=performance.now()+delay;
+  function frame(now){
+    var t=(now-t0)/dur;
+    if(t<0){ requestAnimationFrame(frame); return; }
+    if(t>=1){
+      strip.style.transform="translateY("+yEnd+"px)";
+      strip.style.filter="blur(0px)";
+      strip.children[F].classList.add("mid");
+      onDone();
+      return;
+    }
+    var e=1-Math.pow(1-t,3);
+    var y=yStart+dist*e;
+    strip.style.transform="translateY("+y+"px)";
+    var sp=1-t;
+    strip.style.filter="blur("+(sp*sp*4).toFixed(2)+"px)";
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+
+function spin(){
+  if(state.spinning) return;
+  state.spinning=true; state.pending=false;
+  $("spin").disabled=true; $("logL").disabled=true; $("logB").disabled=true;
+  $("hint").classList.add("off");
+  var res={trick:pick(TRICKS), stance:pick(STANCES), spot:pick(SPOTS)};
+  state.result=res;
+  $("result").textContent=res.trick+" × "+res.stance+" × "+res.spot;
+  var done=0;
+  function each(i, items, target, delay){
+    spinReel($("reel"+i), items, target, delay, 1900, function(){
+      done++;
+      if(done===3){
+        state.spinning=false;
+        state.pending=true;
+        $("logL").disabled=false; $("logB").disabled=false;
+      }
+    });
+  }
+  each(0, TRICKS, TRICKS.indexOf(res.trick), 0);
+  each(1, STANCES, STANCES.indexOf(res.stance), 160);
+  each(2, SPOTS, SPOTS.indexOf(res.spot), 320);
+}
+
+function log(outcome){
+  if(state.spinning || !state.pending) return;
+  var r=state.result;
+  if(!S.tricks[r.trick]) S.tricks[r.trick]={l:0,b:0};
+  if(outcome==="l"){
+    S.landed++; S.streak++; S.bailstreak=0;
+    if(S.streak>S.best) S.best=S.streak;
+    S.tricks[r.trick].l++;
+  }else{
+    S.bailed++; S.bailstreak++; S.streak=0;
+    S.tricks[r.trick].b++;
+  }
+  S.results.push(outcome==="l"?1:0);
+  if(S.results.length>200) S.results=S.results.slice(-200);
+  save(); render();
+  state.pending=false;
+  var el=$("result");
+  el.classList.remove("flash-l","flash-b");
+  void el.offsetWidth;
+  el.classList.add(outcome==="l"?"flash-l":"flash-b");
+  if(outcome==="b"){
+    document.body.classList.remove("shake");
+    void document.body.offsetWidth;
+    document.body.classList.add("shake");
+  }
+  $("logL").disabled=true; $("logB").disabled=true;
+}
+
+function reset(){
+  if(!confirm("reset all shred stats?")) return;
+  S={landed:0, bailed:0, streak:0, best:0, bailstreak:0, results:[], tricks:{}};
+  save(); render();
+  $("result").textContent="press space";
+  $("logL").disabled=true; $("logB").disabled=true;
+}
+
+$("spin").addEventListener("click", spin);
+$("logL").addEventListener("click", function(){ log("l"); });
+$("logB").addEventListener("click", function(){ log("b"); });
+$("reset").addEventListener("click", reset);
+document.addEventListener("keydown", function(ev){
+  if(ev.repeat) return;
+  if(ev.code==="Space"){ ev.preventDefault(); if(!state.spinning) spin(); }
+  else if(ev.key==="l"||ev.key==="L"){ log("l"); }
+  else if(ev.key==="b"||ev.key==="B"){ log("b"); }
+});
+
+/* idle strips */
+(function(){
+  var reels=[[0,TRICKS],[1,STANCES],[2,SPOTS]];
+  for(var i=0;i<reels.length;i++){
+    var strip=$("reel"+reels[i][0]).querySelector(".strip");
+    var meta=buildStrip(strip, reels[i][1], reels[i][1].length-1);
+    strip.style.transform="translateY("+(-MID*ITEM_H)+"px)";
+    strip.children[MID].classList.add("mid");
+  }
+})();
+render();
+})();
+</script>
+</body>
+</html>

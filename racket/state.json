@@ -1,0 +1,71 @@
+{
+ "players": [
+  {
+   "id": 1,
+   "name": "Jack",
+   "rating": 985,
+   "wins": 1,
+   "losses": 2,
+   "streak": -3
+  },
+  {
+   "id": 2,
+   "name": "Sam",
+   "rating": 985,
+   "wins": 1,
+   "losses": 2,
+   "streak": -3
+  },
+  {
+   "id": 3,
+   "name": "Priya",
+   "rating": 1016,
+   "wins": 1,
+   "losses": 0,
+   "streak": 1
+  },
+  {
+   "id": 4,
+   "name": "Miguel",
+   "rating": 1016,
+   "wins": 1,
+   "losses": 0,
+   "streak": 1
+  }
+ ],
+ "matches": [
+  {
+   "winner": 1,
+   "loser": 2,
+   "winner_name": "Jack",
+   "loser_name": "Sam",
+   "ts": 1788471155,
+   "delta": 16
+  },
+  {
+   "winner": 2,
+   "loser": 1,
+   "winner_name": "Sam",
+   "loser_name": "Jack",
+   "ts": 1788471155,
+   "delta": 17
+  },
+  {
+   "winner": 3,
+   "loser": 1,
+   "winner_name": "Priya",
+   "loser_name": "Jack",
+   "ts": 1788471155,
+   "delta": 16
+  },
+  {
+   "winner": 4,
+   "loser": 2,
+   "winner_name": "Miguel",
+   "loser_name": "Sam",
+   "ts": 1788471234,
+   "delta": 16
+  }
+ ],
+ "next_id": 5
+}

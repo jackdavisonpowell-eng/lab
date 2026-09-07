@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>POISE — balance playground</title>
+<style>
+  :root{
+    --bg:#0d0d0f; --panel:#141417; --ink:#e8e4dc; --dim:#8a857c;
+    --amber:#f0a83c; --amber-dim:rgba(240,168,60,.35); --line:#26262b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);
+    font-family:"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{display:flex;flex-direction:column;height:100vh}
+  header{display:flex;align-items:baseline;gap:14px;padding:14px 20px 8px}
+  header h1{font-style:italic;font-weight:800;font-size:26px;letter-spacing:.06em;margin:0;color:var(--amber)}
+  header .tag{color:var(--dim);font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+  .main{flex:1;display:flex;min-height:0}
+  .stage{flex:1.55;position:relative;display:flex;align-items:center;justify-content:center;
+    padding:12px;border-right:1px solid var(--line);min-width:0}
+  canvas{background:#101013;border:1px solid var(--line);max-width:100%;max-height:100%;
+    width:800px;height:600px;cursor:crosshair;touch-action:none}
+  .hud{position:absolute;left:22px;top:22px;font-size:11px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--dim);pointer-events:none}
+  .panel{flex:1;min-width:300px;max-width:400px;overflow-y:auto;padding:18px 20px;
+    display:flex;flex-direction:column;gap:16px}
+  .verdict{border:1px solid var(--line);background:var(--panel);padding:16px 18px}
+  .verdict .word{font-style:italic;font-weight:800;font-size:40px;line-height:1;
+    color:var(--amber);letter-spacing:.02em}
+  .verdict .sub{color:var(--dim);font-size:12.5px;margin-top:8px;line-height:1.4}
+  .metric{border:1px solid var(--line);background:var(--panel);padding:12px 14px}
+  .metric .row{display:flex;justify-content:space-between;align-items:baseline}
+  .metric .label{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .metric .big{font-family:"SFMono-Regular",Consolas,monospace;font-size:26px;font-weight:700}
+  .metric .dir{font-size:12px;color:var(--ink);letter-spacing:.08em}
+  .bar{height:8px;background:#1d1d21;margin-top:10px;position:relative;overflow:hidden}
+  .bar > i{position:absolute;left:0;top:0;bottom:0;background:var(--amber);display:block}
+  .net{display:flex;height:20px;border:1px solid var(--line);margin-top:10px;position:relative}
+  .net .L{background:var(--amber);height:100%}
+  .net .R{background:#2a2a30;height:100%}
+  .net .tick{position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:var(--ink)}
+  .net .cap{position:absolute;right:6px;top:2px;font-size:11px;font-family:monospace;color:var(--ink)}
+  .ctl{border:1px solid var(--line);background:var(--panel);padding:12px 14px}
+  .ctl h3{margin:0 0 10px;font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim)}
+  .selrow{display:flex;align-items:center;gap:10px;margin:8px 0;font-size:12px}
+  .selrow span{width:56px;color:var(--dim);letter-spacing:.08em;text-transform:uppercase;font-size:11px}
+  input[type=range]{flex:1;accent-color:var(--amber);background:transparent}
+  .btns{display:flex;flex-wrap:wrap;gap:8px}
+  button{font:inherit;cursor:pointer;background:#1a1a1f;color:var(--ink);border:1px solid var(--line);
+    padding:8px 12px;font-size:12px;letter-spacing:.06em;text-transform:uppercase}
+  button:hover{border-color:var(--amber-dim);color:var(--amber)}
+  button.on{background:var(--amber);color:#141417;border-color:var(--amber);font-weight:700}
+  .brush{display:flex;gap:8px;flex-wrap:wrap}
+  .brush button{width:46px;height:38px;padding:0;display:flex;align-items:center;justify-content:center}
+  .brush button svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.6}
+  .hint{color:var(--dim);font-size:11.5px;line-height:1.5}
+  .sel-none{color:var(--dim);font-size:12px;font-style:italic}
+  footer{padding:8px 20px;border-top:1px solid var(--line);color:var(--dim);font-size:11px;
+    letter-spacing:.08em;display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>POISE</h1>
+    <span class="tag">balance playground · ART-1100 Ch2</span>
+  </header>
+  <div class="main">
+    <div class="stage">
+      <div class="hud">drag shapes · click empty space to drop · the frame tips under visual weight</div>
+      <canvas id="cv" width="800" height="600"></canvas>
+    </div>
+    <div class="panel">
+      <div class="verdict">
+        <div class="word" id="verdict">EMPTY</div>
+        <div class="sub" id="sub">drop shapes onto the canvas</div>
+      </div>
+
+      <div class="metric">
+        <div class="row"><span class="label">Tilt</span><span class="big" id="tilt">+0.0&deg;</span></div>
+        <div class="row" style="margin-top:2px"><span class="dir" id="tiltDir">even</span><span class="label">seesaw</span></div>
+      </div>
+
+      <div class="metric">
+        <div class="row"><span class="label">Symmetry</span><span class="big" id="symmetry">0%</span></div>
+        <div class="bar"><i id="symBar" style="width:0%"></i></div>
+        <div class="hint" style="margin-top:8px">mirror match across the axis — formal balance</div>
+      </div>
+
+      <div class="metric">
+        <div class="row"><span class="label">Radial</span><span class="big" id="radial">0%</span></div>
+        <div class="bar"><i id="radBar" style="width:0%"></i></div>
+        <div class="hint" style="margin-top:8px">mass evenly radiating from the center point</div>
+      </div>
+
+      <div class="metric">
+        <div class="row"><span class="label">Net weight</span><span class="dir" id="netLabel">0 / 0</span></div>
+        <div class="net"><div class="L" id="netLeft" style="width:50%"></div><div class="R" style="flex:1"></div><div class="tick"></div></div>
+        <div class="hint" style="margin-top:8px">left / right mass — the counterweight split</div>
+      </div>
+
+      <div class="ctl">
+        <h3>Brush</h3>
+        <div class="brush" id="brush">
+          <button data-type="circle" title="circle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg></button>
+          <button data-type="square" title="square"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16"/></svg></button>
+          <button data-type="triangle" title="triangle"><svg viewBox="0 0 24 24"><path d="M12 3 L21 20 L3 20 Z"/></svg></button>
+          <button data-type="diamond" title="diamond"><svg viewBox="0 0 24 24"><path d="M12 2 L22 12 L12 22 L2 12 Z"/></svg></button>
+          <button data-type="bar" title="bar"><svg viewBox="0 0 24 24"><rect x="2" y="9" width="20" height="6"/></svg></button>
+        </div>
+      </div>
+
+      <div class="ctl">
+        <h3>Selected</h3>
+        <div id="selBody"><div class="sel-none">click a shape to edit it</div></div>
+      </div>
+
+      <div class="ctl">
+        <h3>Presets — see each balance type</h3>
+        <div class="btns">
+          <button data-preset="symmetric">Symmetric</button>
+          <button data-preset="asymmetric">Asymmetric</button>
+          <button data-preset="radial">Radial</button>
+          <button data-preset="random">Random</button>
+          <button data-preset="clear">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer>
+    <span>visual weight = size &times; value (dark weighs more) &times; saturation</span>
+    <span>local-only · no data leaves this page</span>
+  </footer>
+</div>
+
+<script>
+"use strict";
+// ---------- pure math (no DOM) — harnessable in Node ----------
+function shapeArea(s){
+  var r=s.size;
+  switch(s.type){
+    case 'circle':   return Math.PI*r*r;
+    case 'square':   return 4*r*r;
+    case 'triangle': return 2*r*r;
+    case 'diamond':  return 2*r*r;
+    case 'bar':      return 3*r*r;
+    default:         return Math.PI*r*r;
+  }
+}
+// dark (value=1) weighs ~1.8x, saturated ~1.5x — per ART-1100: darks + saturated weigh more
+function shapeWeight(s){
+  return shapeArea(s)*(1 + 0.8*s.value + 0.5*s.sat);
+}
+function symmetryScore(shapes, Cx){
+  var ws=shapes.map(function(s){return {w:shapeWeight(s),x:s.x,y:s.y,size:s.size,value:s.value,sat:s.sat,type:s.type};});
+  var totalW=ws.reduce(function(a,b){return a+b.w;},0);
+  if(totalW<=0) return 0;
+  var D=52,sizeTol=15,valTol=0.2,satTol=0.24,axisTol=28;
+  var credited=0, used={};
+  for(var i=0;i<ws.length;i++){
+    var s=ws[i];
+    if(Math.abs(s.x-Cx)<axisTol){ credited+=s.w; used[i]=true; continue; } // self-mirrored on axis
+    var mx=2*Cx-s.x, my=s.y, best=-1, bestD=1e9;
+    for(var j=0;j<ws.length;j++){
+      if(j===i||used[j]) continue;
+      var t=ws[j];
+      if(t.type!==s.type) continue;
+      if(Math.abs(t.size-s.size)>sizeTol) continue;
+      if(Math.abs(t.value-s.value)>valTol) continue;
+      if(Math.abs(t.sat-s.sat)>satTol) continue;
+      var d=Math.hypot(t.x-mx,t.y-my);
+      if(d<bestD){bestD=d;best=j;}
+    }
+    if(best>=0&&bestD<D){ credited+=Math.min(s.w,ws[best].w); used[best]=true; }
+  }
+  return Math.max(0,Math.min(1,credited/totalW));
+}
+function radialScore(shapes, Cx, Cy){
+  var ws=shapes.map(function(s){return {w:shapeWeight(s),x:s.x,y:s.y};});
+  var totalW=ws.reduce(function(a,b){return a+b.w;},0);
+  if(totalW<=0) return 0;
+  var bins=new Array(8).fill(0), ringDists=[], focalW=0;
+  for(var i=0;i<ws.length;i++){
+    var o=ws[i], dx=o.x-Cx, dy=o.y-Cy, d=Math.hypot(dx,dy);
+    if(d<20){ focalW+=o.w; continue; } // the focal center point is expected, not noise
+    var a=Math.atan2(dy,dx); if(a<0)a+=Math.PI*2;
+    var b=Math.floor(a/(Math.PI*2)*8); if(b>7)b=7;
+    bins[b]+=o.w;
+    ringDists.push(d);
+  }
+  var awayW=totalW-focalW;
+  if(awayW<=0) return 0; // nothing but a center point
+  // angular coverage: how many of the 8 sectors hold real mass — the
+  // signature of "radiating from a point" vs "mirrored across a line"
+  var maxB=Math.max.apply(null,bins);
+  var covered=bins.filter(function(b){return b>0.12*maxB;}).length;
+  var coverage=covered/8;
+  // concentricity: mass at a roughly consistent radius (the ring)
+  var meanD=ringDists.length? ringDists.reduce(function(a,b){return a+b;},0)/ringDists.length:0;
+  var stdD=ringDists.length? Math.sqrt(ringDists.reduce(function(a,b){return a+(b-meanD)*(b-meanD);},0)/ringDists.length):0;
+  var concentric=meanD>0? Math.max(0,1-stdD/meanD):0;
+  return Math.max(0,Math.min(1, 0.65*coverage + 0.35*concentric));
+}
+function verdict(tilt, symmetry, radial, totalW){
+  if(totalW<=0) return {word:'EMPTY',sub:'drop shapes onto the canvas'};
+  if(radial>=0.55) return {word:'RADIAL',sub:'masses radiate from a center point'};
+  if(symmetry>=0.55) return {word:'SYMMETRICAL',sub:'mirrored masses across the axis'};
+  if(Math.abs(tilt)<=7) return {word:'ASYMMETRICAL',sub:'unequal masses that still resolve'};
+  return {word:'TIPPING',sub:'the weight tips — add counterweight'};
+}
+function computeReadout(shapes, W, H){
+  var Cx=W/2, Cy=H/2, totalW=0, comX=0, leftW=0, rightW=0;
+  var AXIS=12;
+  for(var i=0;i<shapes.length;i++){
+    var w=shapeWeight(shapes[i]); totalW+=w; comX+=w*shapes[i].x;
+    var dx=shapes[i].x-Cx;
+    if(dx<-AXIS) leftW+=w;
+    else if(dx>AXIS) rightW+=w;
+    else { leftW+=w/2; rightW+=w/2; } // on the axis: split evenly
+  }
+  var tilt=0;
+  if(totalW>0){ comX/=totalW; tilt=((comX-Cx)/(W/2))*16; }
+  var symmetry=symmetryScore(shapes,Cx), radial=radialScore(shapes,Cx,Cy);
+  var v=verdict(tilt,symmetry,radial,totalW);
+  return {tilt:tilt,comX:comX,totalW:totalW,symmetry:symmetry,radial:radial,leftW:leftW,rightW:rightW,verdict:v.word,sub:v.sub};
+}
+// ---------- state ----------
+var W=800,H=600,Cx=W/2,Cy=H/2;
+var shapes=[], selected=null, brush='circle', currentTilt=0, targetTilt=0;
+var TYPES=['circle','square','triangle','diamond','bar'];
+// ---------- DOM ----------
+var canvas,ctx,el={};
+function $(id){return document.getElementById(id);}
+function init(){
+  canvas=$('cv'); ctx=canvas.getContext('2d');
+  el.verdict=$('verdict'); el.sub=$('sub'); el.tilt=$('tilt'); el.tiltDir=$('tiltDir');
+  el.symmetry=$('symmetry'); el.symBar=$('symBar'); el.radial=$('radial'); el.radBar=$('radBar');
+  el.netLabel=$('netLabel'); el.netLeft=$('netLeft'); el.selBody=$('selBody');
+  // brush buttons
+  var bbtns=document.querySelectorAll('#brush button');
+  for(var i=0;i<bbtns.length;i++){
+    (function(b){ b.addEventListener('click',function(){ setBrush(b.getAttribute('data-type')); }); })(bbtns[i]);
+  }
+  // preset buttons
+  var pbtns=document.querySelectorAll('[data-preset]');
+  for(var p=0;p<pbtns.length;p++){
+    (function(b){ b.addEventListener('click',function(){ loadPreset(b.getAttribute('data-preset')); }); })(pbtns[p]);
+  }
+  setBrush('circle');
+  bindPointer();
+  updateReadouts();
+  requestAnimationFrame(loop);
+}
+function setBrush(t){
+  brush=t;
+  var bbtns=document.querySelectorAll('#brush button');
+  for(var i=0;i<bbtns.length;i++) bbtns[i].classList.toggle('on', bbtns[i].getAttribute('data-type')===t);
+}
+// ---------- presets ----------
+function loadPreset(kind){
+  shapes=[]; selected=null;
+  if(kind==='symmetric'){
+    shapes.push({type:'circle',x:Cx-160,y:300,size:72,value:0.85,sat:0.9});
+    shapes.push({type:'circle',x:Cx+160,y:300,size:72,value:0.85,sat:0.9});
+    shapes.push({type:'bar',x:Cx,y:300,size:42,value:0.5,sat:0.6});
+  } else if(kind==='asymmetric'){
+    shapes.push({type:'triangle',x:170,y:310,size:98,value:0.95,sat:0.85});
+    shapes.push({type:'circle',x:520,y:240,size:34,value:0.12,sat:0.2});
+    shapes.push({type:'circle',x:610,y:330,size:28,value:0.15,sat:0.25});
+    shapes.push({type:'diamond',x:560,y:410,size:26,value:0.2,sat:0.3});
+  } else if(kind==='radial'){
+    for(var i=0;i<6;i++){
+      var a=i/6*Math.PI*2;
+      shapes.push({type:'diamond',x:Cx+Math.cos(a)*150,y:Cy+Math.sin(a)*150,size:34,value:0.7,sat:0.8});
+    }
+    shapes.push({type:'circle',x:Cx,y:Cy,size:30,value:0.9,sat:0.9});
+  } else if(kind==='random'){
+    var n=4+Math.floor(Math.random()*5);
+    for(var k=0;k<n;k++){
+      shapes.push({
+        type:TYPES[Math.floor(Math.random()*TYPES.length)],
+        x:60+Math.random()*(W-120), y:60+Math.random()*(H-120),
+        size:22+Math.random()*70, value:Math.random(), sat:Math.random()
+      });
+    }
+  }
+  updateReadouts(); renderSelected();
+}
+// ---------- pointer ----------
+function bindPointer(){
+  var dragging=false, moved=false, offX=0, offY=0;
+  function pos(e){
+    var r=canvas.getBoundingClientRect();
+    var cx=(e.touches?e.touches[0].clientX:e.clientX), cy=(e.touches?e.touches[0].clientY:e.clientY);
+    return {x:(cx-r.left)*(W/r.width), y:(cy-r.top)*(H/r.height)};
+  }
+  function hit(px,py){
+    for(var i=shapes.length-1;i>=0;i--){
+      var s=shapes[i], r=s.size*1.1;
+      var dx=px-s.x, dy=py-s.y;
+      if(s.type==='bar'){ if(Math.abs(dx)<1.5*r&&Math.abs(dy)<0.7*r) return s; }
+      else if(Math.hypot(dx,dy)<=r) return s;
+    }
+    return null;
+  }
+  function down(e){
+    var p=pos(e), s=hit(p.x,p.y);
+    if(s){ selected=s; offX=p.x-s.x; offY=p.y-s.y; }
+    else { s={type:brush,x:p.x,y:p.y,size:44,value:0.7,sat:0.7}; shapes.push(s); selected=s; offX=0; offY=0; }
+    dragging=true; moved=false; renderSelected(); updateReadouts();
+    if(e.cancelable) e.preventDefault();
+  }
+  function move(e){
+    if(!dragging) return;
+    var p=pos(e); selected.x=p.x-offX; selected.y=p.y-offY; moved=true;
+    updateReadouts();
+    if(e.cancelable) e.preventDefault();
+  }
+  function up(){ dragging=false; }
+  canvas.addEventListener('mousedown',down);
+  window.addEventListener('mousemove',move);
+  window.addEventListener('mouseup',up);
+  canvas.addEventListener('touchstart',down,{passive:false});
+  canvas.addEventListener('touchmove',move,{passive:false});
+  window.addEventListener('touchend',up);
+}
+// ---------- selected controls ----------
+function renderSelected(){
+  if(!selected){ el.selBody.innerHTML='<div class="sel-none">click a shape to edit it</div>'; return; }
+  var s=selected;
+  el.selBody.innerHTML=
+    '<div class="selrow"><span>size</span><input type="range" id="rSize" min="16" max="96" value="'+Math.round(s.size)+'"></div>'+
+    '<div class="selrow"><span>value</span><input type="range" id="rVal" min="0" max="100" value="'+Math.round(s.value*100)+'"></div>'+
+    '<div class="selrow"><span>sat</span><input type="range" id="rSat" min="0" max="100" value="'+Math.round(s.sat*100)+'"></div>'+
+    '<div class="btns" style="margin-top:10px"><button id="bDup">duplicate</button><button id="bDel">delete</button></div>';
+  $('rSize').addEventListener('input',function(){ s.size=+this.value; updateReadouts(); });
+  $('rVal').addEventListener('input',function(){ s.value=+this.value/100; updateReadouts(); });
+  $('rSat').addEventListener('input',function(){ s.sat=+this.value/100; updateReadouts(); });
+  $('bDup').addEventListener('click',function(){
+    var c={type:s.type,x:s.x+24,y:s.y+24,size:s.size,value:s.value,sat:s.sat};
+    shapes.push(c); selected=c; renderSelected(); updateReadouts();
+  });
+  $('bDel').addEventListener('click',function(){
+    shapes=shapes.filter(function(x){return x!==s;}); selected=null; renderSelected(); updateReadouts();
+  });
+}
+// ---------- render ----------
+function shapeColor(s){
+  var sat=Math.round(s.sat*88), light=Math.round(88-s.value*78);
+  return 'hsl(35,'+sat+'%,'+light+'%)';
+}
+function drawShape(s, sel){
+  var r=s.size;
+  ctx.fillStyle=shapeColor(s);
+  ctx.strokeStyle= sel?'rgba(255,255,255,0.92)':'rgba(240,168,60,0.55)';
+  ctx.lineWidth= sel?2.5:1.25;
+  ctx.beginPath();
+  switch(s.type){
+    case 'circle':   ctx.arc(s.x,s.y,r,0,Math.PI*2); break;
+    case 'square':   ctx.rect(s.x-r,s.y-r,2*r,2*r); break;
+    case 'triangle': ctx.moveTo(s.x,s.y-r); ctx.lineTo(s.x+r,s.y+r*0.8); ctx.lineTo(s.x-r,s.y+r*0.8); ctx.closePath(); break;
+    case 'diamond':  ctx.moveTo(s.x,s.y-r); ctx.lineTo(s.x+r,s.y); ctx.lineTo(s.x,s.y+r); ctx.lineTo(s.x-r,s.y); ctx.closePath(); break;
+    case 'bar':      ctx.rect(s.x-1.5*r,s.y-0.5*r,3*r,r); break;
+  }
+  ctx.fill(); ctx.stroke();
+}
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  // fixed horizon (the reference the frame tips against)
+  ctx.save();
+  ctx.strokeStyle='rgba(240,168,60,0.16)'; ctx.setLineDash([4,8]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,Cy); ctx.lineTo(W,Cy); ctx.stroke();
+  ctx.restore();
+  // rotated composition
+  ctx.save();
+  ctx.translate(Cx,Cy); ctx.rotate(currentTilt*Math.PI/180); ctx.translate(-Cx,-Cy);
+  ctx.strokeStyle='rgba(255,255,255,0.14)'; ctx.setLineDash([2,6]); ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(Cx,0); ctx.lineTo(Cx,H); ctx.stroke(); ctx.setLineDash([]);
+  ctx.strokeStyle='rgba(240,168,60,0.5)'; ctx.lineWidth=1.25;
+  ctx.beginPath(); ctx.moveTo(Cx-9,Cy); ctx.lineTo(Cx+9,Cy); ctx.moveTo(Cx,Cy-9); ctx.lineTo(Cx,Cy+9); ctx.stroke();
+  for(var i=0;i<shapes.length;i++) drawShape(shapes[i], shapes[i]===selected);
+  ctx.restore();
+}
+function loop(){
+  currentTilt += (targetTilt-currentTilt)*0.12;
+  if(Math.abs(targetTilt-currentTilt)<0.01) currentTilt=targetTilt;
+  draw();
+  requestAnimationFrame(loop);
+}
+function updateReadouts(){
+  var r=computeReadout(shapes,W,H);
+  targetTilt=r.tilt;
+  el.tilt.innerHTML=(r.tilt>=0?'+':'')+r.tilt.toFixed(1)+'&deg;';
+  el.tiltDir.textContent = Math.abs(r.tilt)<0.5?'even':(r.tilt<0?'tips LEFT':'tips RIGHT');
+  el.symmetry.textContent=Math.round(r.symmetry*100)+'%';
+  el.symBar.style.width=Math.round(r.symmetry*100)+'%';
+  el.radial.textContent=Math.round(r.radial*100)+'%';
+  el.radBar.style.width=Math.round(r.radial*100)+'%';
+  el.verdict.textContent=r.verdict;
+  el.sub.textContent=r.sub;
+  var tot=r.leftW+r.rightW, lf=tot>0? r.leftW/tot*100:50;
+  el.netLeft.style.width=lf+'%';
+  el.netLabel.textContent=tot>0?(Math.round(lf)+' / '+Math.round(100-lf)):'0 / 0';
+  canvas.setAttribute('data-tilt',r.tilt.toFixed(2));
+  canvas.setAttribute('data-verdict',r.verdict);
+  canvas.setAttribute('data-symmetry',Math.round(r.symmetry*100));
+  canvas.setAttribute('data-radial',Math.round(r.radial*100));
+  canvas.setAttribute('data-total',Math.round(r.totalW));
+}
+if(typeof document!=='undefined' && document.querySelector) init();
+</script>
+</body>
+</html>

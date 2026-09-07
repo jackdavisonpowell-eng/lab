@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VILLeneuve — shot generator</title>
+<style>
+  :root {
+    --bg: #0a0a08;
+    --ink: #f2efe9;
+    --dim: #8a857a;
+    --amber: #e8a33d;
+    --line: #2a2822;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: Georgia, 'Times New Roman', serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .frame {
+    width: 100%;
+    max-width: 720px;
+    border: 1px solid var(--line);
+    padding: 34px 38px 30px;
+    position: relative;
+    background:
+      linear-gradient(var(--bg), var(--bg)) padding-box;
+  }
+  .frame.master { border-color: var(--amber); }
+  /* corner ticks */
+  .frame::before, .frame::after,
+  .ticks::before, .ticks::after {
+    content: "";
+    position: absolute;
+    width: 14px; height: 14px;
+    border-color: var(--dim);
+    border-style: solid;
+    border-width: 0;
+  }
+  .frame::before { top: -1px; left: -1px; border-top-width: 2px; border-left-width: 2px; }
+  .frame::after  { top: -1px; right: -1px; border-top-width: 2px; border-right-width: 2px; }
+  .ticks::before { bottom: -1px; left: -1px; border-bottom-width: 2px; border-left-width: 2px; }
+  .ticks::after  { bottom: -1px; right: -1px; border-bottom-width: 2px; border-right-width: 2px; }
+  .frame.master::before, .frame.master::after,
+  .frame.master .ticks::before, .frame.master .ticks::after { border-color: var(--amber); }
+
+  header { display: flex; align-items: baseline; justify-content: space-between; border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 22px; }
+  .brand { font-style: italic; letter-spacing: .35em; font-size: 15px; color: var(--dim); text-transform: uppercase; }
+  .brand b { color: var(--ink); font-weight: normal; }
+  .hold { font-size: 13px; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; }
+  .hold b { color: var(--amber); font-size: 22px; font-style: italic; letter-spacing: 0; margin-right: 4px; }
+
+  .shotno { font-size: 84px; font-style: italic; font-weight: normal; line-height: 1; margin-bottom: 6px; }
+  .shotno small { font-size: 18px; color: var(--dim); letter-spacing: .3em; font-style: normal; }
+  .stamp {
+    display: none;
+    float: right;
+    border: 2px solid var(--amber);
+    color: var(--amber);
+    font-style: italic;
+    letter-spacing: .3em;
+    font-size: 13px;
+    padding: 4px 10px;
+    transform: rotate(3deg);
+    margin-top: 10px;
+  }
+  .frame.master .stamp { display: block; }
+
+  dl { display: grid; grid-template-columns: 1fr 1fr; gap: 18px 34px; margin-bottom: 24px; }
+  dt { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); margin-bottom: 4px; }
+  dd { font-size: 19px; font-style: italic; }
+
+  .silence { border-top: 1px solid var(--line); padding-top: 16px; margin-bottom: 16px; }
+  .silence dt { font-size: 11px; letter-spacing: .3em; text-transform: uppercase; color: var(--dim); margin-bottom: 6px; }
+  .silence dd { font-size: 17px; font-style: italic; color: var(--dim); }
+
+  .note { font-size: 21px; font-style: italic; color: var(--amber); line-height: 1.35; margin-bottom: 26px; }
+  .frame.master .note { font-size: 23px; }
+
+  footer { display: flex; align-items: center; gap: 14px; border-top: 1px solid var(--line); padding-top: 18px; }
+  button {
+    background: none;
+    border: 1px solid var(--ink);
+    color: var(--ink);
+    font-family: inherit;
+    font-style: italic;
+    font-size: 15px;
+    letter-spacing: .25em;
+    text-transform: uppercase;
+    padding: 10px 26px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber); }
+  button:active { transform: translateY(1px); }
+  .hint { margin-left: auto; font-size: 11px; letter-spacing: .2em; color: var(--dim); text-transform: uppercase; }
+  .flash { animation: flash .35s steps(2); }
+  @keyframes flash { 0% { opacity: .2; } 100% { opacity: 1; } }
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="ticks"></div>
+  <header>
+    <div class="brand"><b>VILL</b>eneuve &mdash; shot generator</div>
+    <div class="hold">hold <b id="hold">12</b>s</div>
+  </header>
+  <div class="shotno"><small>SHOT</small> <span id="num">0001</span></div>
+  <div class="stamp">master</div>
+  <dl>
+    <div><dt>scale</dt><dd id="scale"></dd></div>
+    <div><dt>location</dt><dd id="location"></dd></div>
+    <div><dt>atmosphere</dt><dd id="atmosphere"></dd></div>
+    <div><dt>subject</dt><dd id="subject"></dd></div>
+    <div><dt>light</dt><dd id="light"></dd></div>
+    <div><dt>composition</dt><dd id="composition"></dd></div>
+  </dl>
+  <div class="silence"><dt>silence</dt><dd id="silence"></dd></div>
+  <div class="note" id="note"></div>
+  <footer>
+    <button id="cut" type="button">cut</button>
+    <button id="print" type="button">print</button>
+    <span class="hint">space = next shot</span>
+  </footer>
+</div>
+<script>
+"use strict";
+const POOLS = {
+  scale: [
+    "extreme wide", "wide", "medium wide", "medium", "close",
+    "extreme close", "insert", "aerial"
+  ],
+  location: [
+    "brutalist parking structure, level B4",
+    "fog-bound highway, no traffic",
+    "sodium-lit overpass",
+    "abandoned mall food court",
+    "concrete stairwell, 40 floors",
+    "rain-soaked intersection at 4 a.m.",
+    "hospital corridor, fluorescent",
+    "airport terminal after the last train",
+    "cathedral of concrete, nave empty",
+    "frozen lake, single footprint trail",
+    "industrial district, smokestacks",
+    "subway platform, doors closed",
+    "convention hotel, ballroom mid-teardown",
+    "reservoir behind the dam wall",
+    "parking lot of a closed stadium"
+  ],
+  atmosphere: [
+    "fog, thick as cotton",
+    "drizzle that never starts",
+    "snow, just beginning",
+    "sodium haze",
+    "clear night, hard stars",
+    "overcast, flat white",
+    "steam rising from a vent",
+    "cold air you can see",
+    "dust in a light shaft",
+    "glass of rain on the window"
+  ],
+  subject: [
+    "a lone figure in a coat",
+    "a car with its headlights off",
+    "a pair of hands on a steering wheel",
+    "a door, slightly open",
+    "a clock that is not ticking",
+    "a reflection that is not yours",
+    "an empty chair facing the window",
+    "a phone, face down, ringing",
+    "a long corridor with no end",
+    "a child watching from a doorway",
+    "two figures, not speaking",
+    "a staircase going down",
+    "a window, lights on inside",
+    "a coat on a chair, still warm"
+  ],
+  light: [
+    "sodium amber, single source",
+    "cold blue, no moon",
+    "one practical lamp",
+    "backlit, face in shadow",
+    "overcast, no shadows at all",
+    "neon spill from a storefront",
+    "candle, flickering",
+    "fluorescent, one tube failing",
+    "headlights through fog",
+    "dawn, blue hour, almost there"
+  ],
+  composition: [
+    "dead center, symmetrical",
+    "rule of thirds, subject small",
+    "80% negative space",
+    "frame within a frame",
+    "long lens, compressed",
+    "low angle, building leaning",
+    "high angle, figure tiny",
+    "leading lines to the subject",
+    "shallow focus, background gone",
+    "the horizon line, exactly middle"
+  ],
+  silence: [
+    "no dialogue. hold until it hurts.",
+    "only the hum of the vents.",
+    "rain, then nothing.",
+    "a clock, far away.",
+    "the frame holds its breath.",
+    "one footstep, then the echo dies.",
+    "the city, muted, like underwater.",
+    "silence with a pulse.",
+    "the sound of the lens focusing.",
+    "nothing. the frame is enough."
+  ],
+  note: [
+    "make the building bigger than the story.",
+    "let the fog do the acting.",
+    "if the frame is still, so is the audience.",
+    "the cut comes when you stop breathing.",
+    "silence is a character — give it a line.",
+    "shoot the object like it is guilty.",
+    "the long take is a promise you keep.",
+    "scale is a feeling, not a lens.",
+    "the audience should feel the ceiling.",
+    "let the frame hold longer than is comfortable.",
+    "the subject is small. the place is the subject.",
+    "no music. the wind is the score.",
+    "if it is not sad, it is not ready.",
+    "the door is the only character that matters."
+  ],
+  master: [
+    "MASTER: the shot that ends the film.",
+    "MASTER: hold it until the audience forgets to be afraid.",
+    "MASTER: one frame, no cut, the whole story.",
+    "MASTER: the building looks down on everyone. let it.",
+    "MASTER: the last light in the frame is the last line."
+  ]
+};
+
+let shotNo = 0;
+
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function makeShot() {
+  shotNo += 1;
+  const master = Math.random() < 0.05;
+  return {
+    no: shotNo,
+    master: master,
+    hold: 6 + Math.floor(Math.random() * 25),
+    scale: pick(POOLS.scale),
+    location: pick(POOLS.location),
+    atmosphere: pick(POOLS.atmosphere),
+    subject: pick(POOLS.subject),
+    light: pick(POOLS.light),
+    composition: pick(POOLS.composition),
+    silence: pick(POOLS.silence),
+    note: master ? pick(POOLS.master) : pick(POOLS.note)
+  };
+}
+
+function pad(n) {
+  return String(n).padStart(4, "0");
+}
+
+function toText(s) {
+  return [
+    "VILLeneuve shot " + pad(s.no) + (s.master ? " [MASTER]" : ""),
+    "hold " + s.hold + "s",
+    "scale: " + s.scale,
+    "location: " + s.location,
+    "atmosphere: " + s.atmosphere,
+    "subject: " + s.subject,
+    "light: " + s.light,
+    "composition: " + s.composition,
+    "silence: " + s.silence,
+    "note: " + s.note
+  ].join("\n");
+}
+
+function render(s) {
+  const frame = document.getElementById("frame");
+  frame.classList.toggle("master", s.master);
+  document.getElementById("num").textContent = pad(s.no);
+  document.getElementById("hold").textContent = String(s.hold);
+  document.getElementById("scale").textContent = s.scale;
+  document.getElementById("location").textContent = s.location;
+  document.getElementById("atmosphere").textContent = s.atmosphere;
+  document.getElementById("subject").textContent = s.subject;
+  document.getElementById("light").textContent = s.light;
+  document.getElementById("composition").textContent = s.composition;
+  document.getElementById("silence").textContent = s.silence;
+  document.getElementById("note").textContent = s.note;
+  frame.classList.remove("flash");
+  void frame.offsetWidth;
+  frame.classList.add("flash");
+}
+
+function cut() {
+  render(makeShot());
+}
+
+function printShot() {
+  const txt = toText(current);
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(txt).then(function () {
+      flashPrint("copied");
+    }, function () {
+      flashPrint(txt);
+    });
+  } else {
+    flashPrint(txt);
+  }
+}
+
+let current = null;
+
+function flashPrint(msg) {
+  const b = document.getElementById("print");
+  const old = b.textContent;
+  b.textContent = msg.length > 12 ? "copied" : msg;
+  setTimeout(function () { b.textContent = old; }, 900);
+}
+
+document.getElementById("cut").addEventListener("click", cut);
+document.getElementById("print").addEventListener("click", printShot);
+document.addEventListener("keydown", function (e) {
+  if (e.code === "Space" && e.target === document.body) {
+    e.preventDefault();
+    cut();
+  }
+});
+
+current = makeShot();
+render(current);
+</script>
+</body>
+</html>

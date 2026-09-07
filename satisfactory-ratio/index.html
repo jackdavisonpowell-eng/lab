@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RATIO — Satisfactory production-ratio calculator</title>
+<style>
+  :root{
+    --bg:#0b0b0d; --ink:#f4f1ea; --amber:#ffb347; --amber2:#ff8c1a;
+    --line:#2a2a30; --dim:#8a8578; --gap:#ff6b5e;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  body{padding:28px 20px 60px}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-style:italic;font-weight:800;letter-spacing:.14em;font-size:34px;margin:0 0 2px;
+     color:var(--amber)}
+  .sub{color:var(--dim);font-size:13px;letter-spacing:.05em;margin:0 0 22px}
+  .sub b{color:var(--ink)}
+  .panel{border:1px solid var(--line);padding:18px 20px;margin-bottom:16px;
+    background:linear-gradient(180deg,#101014,#0c0c0f)}
+  .panel h2{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim);
+    margin:0 0 14px;font-weight:700}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:flex-end}
+  label{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--dim);margin-bottom:6px}
+  select,input[type=number]{
+    background:#08080a;border:1px solid var(--line);color:var(--ink);
+    font-size:16px;padding:9px 12px;min-width:210px;font-family:inherit}
+  input[type=number]{min-width:120px;text-align:right}
+  select:focus,input:focus{outline:none;border-color:var(--amber)}
+  .hint{color:var(--dim);font-size:12px;margin-top:8px;line-height:1.5}
+  .big{font-size:44px;font-weight:800;color:var(--amber);line-height:1;
+    font-variant-numeric:tabular-nums}
+  .big small{font-size:15px;color:var(--dim);font-weight:600;letter-spacing:.05em}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  th{text-align:left;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--dim);padding:0 10px 8px 0;font-weight:700}
+  td{padding:7px 10px 7px 0;border-top:1px solid #1c1c22;font-size:15px}
+  td.num{text-align:right;font-weight:700;color:var(--amber)}
+  td.item{color:var(--ink)}
+  td .tag{font-size:10px;letter-spacing:.1em;color:var(--dim);border:1px solid var(--line);
+    padding:1px 5px;margin-left:8px;vertical-align:1px}
+  .gap td.item{color:var(--gap)}
+  .gap td.num{color:var(--gap)}
+  .gap .tag{border-color:var(--gap);color:var(--gap)}
+  .note{font-size:12px;color:var(--dim);margin-top:12px;line-height:1.6}
+  .note b{color:var(--amber)}
+  .empty{color:var(--dim);font-style:italic;padding:14px 0}
+  .legend{display:flex;gap:16px;font-size:11px;color:var(--dim);margin-top:4px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
+  .ok{background:var(--amber)} .unk{background:var(--gap)}
+  footer{margin-top:26px;color:#55504a;font-size:11px;letter-spacing:.06em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>RATIO</h1>
+  <p class="sub">Satisfactory <b>Phase 4 / Tier 7</b> production-ratio calculator &middot; how many machines, how much ore</p>
+
+  <div class="panel">
+    <h2>Target</h2>
+    <div class="row">
+      <div>
+        <label for="target">Item to produce</label>
+        <select id="target"></select>
+      </div>
+      <div>
+        <label for="rate">Rate (items / min)</label>
+        <input id="rate" type="number" min="1" step="1" value="10">
+      </div>
+    </div>
+    <p class="hint">The solver walks the full recipe tree and reports, per minute, how many of each
+    machine you must run and how much of each <b>base resource</b> the line consumes.
+    Recipes I'm sure of are computed; the rest are flagged <span style="color:var(--gap)">unknown</span>.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Production lines you need (per min)</h2>
+    <div id="machines"><div class="empty">Pick a target and a rate.</div></div>
+    <p class="hint">Fractional counts are exact ratios — round up to whole machines.
+    A machine at 1× makes 60 / cycle-time items per minute.</p>
+  </div>
+
+  <div class="panel">
+    <h2>Base-resource demand (per min)</h2>
+    <div id="resources"><div class="empty">&mdash;</div></div>
+  </div>
+
+  <div class="panel">
+    <h2>Unknown gaps</h2>
+    <div id="gaps"><div class="empty">No unknowns in this tree.</div></div>
+    <div class="legend">
+      <span><span class="dot ok"></span>recipe known</span>
+      <span><span class="dot unk"></span>recipe unknown (hardcoded gap)</span>
+    </div>
+    <p class="note">Hardcoded &amp; sure: iron plate, steel ingot, reinforced iron plate, steel beam,
+    concrete, wire, screw, plastic, rubber, polymer, modular frame, electric motor,
+    conveyor belt Mk.4 &amp; Mk.5. <b>Unknown</b>: alclad aluminum sheet, encased industrial beam,
+    and anything deeper. Add a recipe to <code>RECIPES</code> to close a gap.</p>
+  </div>
+
+  <footer>RATIO &middot; local-only &middot; recipes hardcoded, no network</footer>
+</div>
+
+<script>
+"use strict";
+// ---- Recipe data -----------------------------------------------------------
+// Base resources: mined directly, no recipe. Everything else needs a recipe
+// entry {in: {item: count}, out: n, time: seconds, machine: "name"}.
+const BASE = {
+  "iron ore":1,"copper ore":1,"coal":1,"limestone":1,"silicon":1,
+  "quartz":1,"petroleum":1,"salt":1,"bauxite":1,"catalyst":1
+};
+const RECIPES = {
+  "iron plate":            {in:{"iron ore":1}, out:1, time:0.25, machine:"foundry"},
+  "copper plate":          {in:{"copper ore":1}, out:1, time:0.25, machine:"foundry"},
+  "steel ingot":           {in:{"iron ore":2,"coal":1}, out:1, time:0.5, machine:"foundry"},
+  "coal coke":             {in:{"coal":1}, out:1, time:0.5, machine:"foundry"},
+  "concrete":              {in:{"limestone":1}, out:1, time:0.5, machine:"concrete mixer"},
+  "wire":                  {in:{"copper plate":1}, out:1, time:0.25, machine:"assembler"},
+  "screw":                 {in:{"iron plate":1}, out:1, time:0.25, machine:"assembler"},
+  "plastic":               {in:{"petroleum":1}, out:1, time:1.0, machine:"refinery"},
+  "rubber":                {in:{"petroleum":1}, out:1, time:1.0, machine:"refinery"},
+  "polymer":               {in:{"plastic":2,"petroleum":1}, out:1, time:1.0, machine:"assembler"},
+  "reinforced iron plate": {in:{"iron plate":1,"screw":1}, out:1, time:0.5, machine:"assembler"},
+  "steel beam":            {in:{"steel ingot":1,"concrete":1}, out:1, time:1.0, machine:"assembler"},
+  "modular frame":         {in:{"steel ingot":2,"concrete":1}, out:1, time:1.0, machine:"assembler"},
+  "electric motor":        {in:{"wire":3,"steel ingot":2}, out:1, time:1.0, machine:"assembler"},
+  // Tier 7 / Phase 4
+  "conveyor belt mk.4":    {in:{"encased industrial beam":1}, out:1, time:0.5, machine:"constructor"},
+  "conveyor belt mk.5":    {in:{"alclad aluminum sheet":1}, out:1, time:0.5, machine:"constructor"}
+  // "alclad aluminum sheet" and "encased industrial beam" intentionally
+  // left out of RECIPES -> reported as unknown gaps.
+};
+const KNOWN_TARGETS = Object.keys(RECIPES).sort();
+
+// ---- Solver ----------------------------------------------------------------
+// Expand the recipe tree for `target` at `rate` items/min.
+// A machine's capacity = 60 / r.time  items/min (one machine, no overclock).
+// machines[item] = need / capacity.
+// Returns {machines: {item: count}, base: {resource: ratePerMin},
+//          gaps: {item: ratePerMin}, ok: bool}
+function solve(target, rate){
+  const machines = {}, base = {}, gaps = {};
+  function expand(item, need){
+    if(need <= 0) return;
+    if(BASE[item]){ base[item] = (base[item]||0) + need; return; }
+    const r = RECIPES[item];
+    if(!r){ gaps[item] = (gaps[item]||0) + need; return; }
+    const capacity = 60 / r.time;              // items/min per machine
+    machines[item] = (machines[item]||0) + need / capacity;
+    const runs = need / r.out;                 // recipe cycles needed
+    for(const ing in r.in){
+      expand(ing, runs * r.in[ing]);
+    }
+  }
+  expand(target, rate);
+  return {machines, base, gaps, ok: Object.keys(gaps).length===0};
+}
+
+// ---- Formatting ------------------------------------------------------------
+function fmt(n){
+  if(!isFinite(n)) return "∞";
+  if(n >= 1000) return (n/1000).toFixed(2).replace(/\.?0+$/,"") + "k";
+  if(n >= 100)  return Math.round(n).toString();
+  if(n >= 10)   return n.toFixed(1).replace(/\.0$/,"");
+  return n.toFixed(2).replace(/\.?0+$/,"");
+}
+function esc(s){return s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
+
+// ---- UI --------------------------------------------------------------------
+function rowTable(title, obj, unit, gap){
+  const keys = Object.keys(obj).sort();
+  if(!keys.length) return '<div class="empty">' + (gap?"No unknowns in this tree.":"—") + '</div>';
+  let h = '<table><tr><th>' + title + '</th><th style="text-align:right">per min</th></tr>';
+  for(const k of keys){
+    h += '<tr' + (gap?' class="gap"':'') + '><td class="item">' + esc(k) +
+      (gap?' <span class="tag">unknown</span>':'') +
+      '</td><td class="num">' + fmt(obj[k]) + ' ' + unit + '</td></tr>';
+  }
+  return h + '</table>';
+}
+function render(){
+  const target = document.getElementById("target").value;
+  const rate = Math.max(0, parseFloat(document.getElementById("rate").value)||0);
+  const res = solve(target, rate);
+  document.getElementById("machines").innerHTML = rowTable("machine", res.machines, "", false);
+  document.getElementById("resources").innerHTML = rowTable("resource", res.base, "", false);
+  document.getElementById("gaps").innerHTML = rowTable("item", res.gaps, "", true);
+}
+
+function init(){
+  const sel = document.getElementById("target");
+  sel.innerHTML = KNOWN_TARGETS.map(t=>'<option value="'+esc(t)+'">'+esc(t)+'</option>').join("");
+  // default to the Tier 7 star
+  const star = KNOWN_TARGETS.indexOf("conveyor belt mk.5");
+  if(star>=0) sel.selectedIndex = star;
+  document.getElementById("rate").addEventListener("input", render);
+  sel.addEventListener("change", render);
+  render();
+}
+init();
+</script>
+</body>
+</html>

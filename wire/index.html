@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>WIRE — AUTOGOD morning broadcast</title>
+<style>
+  :root {
+    --bg: #0a0a08;
+    --ink: #e8e4d8;
+    --dim: #6b675c;
+    --amber: #f2a03d;
+    --amber-hi: #ffc46b;
+    --line: #26241e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
+    overflow: hidden;
+  }
+  /* scanlines */
+  body::after {
+    content: "";
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(0deg,
+      rgba(0,0,0,0.16) 0px, rgba(0,0,0,0.16) 1px,
+      transparent 1px, transparent 3px);
+    pointer-events: none;
+    z-index: 9;
+  }
+  #frame {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    max-width: 900px;
+    margin: 0 auto;
+    border-left: 1px solid var(--line);
+    border-right: 1px solid var(--line);
+  }
+  header {
+    padding: 18px 22px 14px;
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  #masthead {
+    font-style: italic;
+    font-weight: 700;
+    font-size: 26px;
+    letter-spacing: 4px;
+    color: var(--ink);
+  }
+  #masthead .dot { color: var(--amber); }
+  #freq {
+    font-size: 12px;
+    letter-spacing: 2px;
+    color: var(--dim);
+  }
+  #lamp {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--dim);
+  }
+  #lamp .bulb {
+    width: 10px; height: 10px;
+    background: #3a2c14;
+    border: 1px solid var(--line);
+  }
+  body.onair #lamp .bulb {
+    background: var(--amber);
+    box-shadow: 0 0 10px 2px rgba(242,160,61,0.55);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  body.onair #lamp { color: var(--amber); }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+  #progress {
+    height: 3px;
+    background: var(--line);
+  }
+  #progressFill {
+    height: 100%;
+    width: 0%;
+    background: var(--amber);
+    transition: width 120ms linear;
+  }
+  #stage {
+    flex: 1;
+    overflow-y: auto;
+    padding: 26px 26px 40px;
+    font-size: 15px;
+    line-height: 1.75;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .ln { min-height: 1.75em; }
+  .ln.h { font-style: italic; font-size: 17px; color: var(--amber-hi); }
+  .ln.q { color: var(--dim); font-size: 13px; }
+  .w { opacity: 0; transition: opacity 90ms linear; }
+  .w.on { opacity: 1; }
+  .w.now {
+    background: var(--amber);
+    color: #14100a;
+    opacity: 1;
+    box-shadow: 0 0 14px rgba(242,160,61,0.35);
+  }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 14px 22px 18px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  button {
+    font: inherit;
+    font-size: 12px;
+    letter-spacing: 2px;
+    background: none;
+    color: var(--ink);
+    border: 1px solid var(--dim);
+    padding: 8px 16px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--amber); color: var(--amber-hi); }
+  button:disabled { opacity: 0.35; cursor: default; }
+  select {
+    font: inherit;
+    font-size: 12px;
+    background: var(--bg);
+    color: var(--ink);
+    border: 1px solid var(--dim);
+    padding: 7px 8px;
+    max-width: 260px;
+  }
+  label.ctl { font-size: 11px; letter-spacing: 1px; color: var(--dim); display: flex; gap: 8px; align-items: center; }
+  input[type=range] { accent-color: var(--amber); width: 110px; }
+  #stats {
+    margin-left: auto;
+    font-size: 11px;
+    letter-spacing: 1px;
+    color: var(--dim);
+    text-align: right;
+    line-height: 1.5;
+  }
+  #stats b { color: var(--amber); font-size: 15px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div id="frame">
+  <header>
+    <div id="masthead">WIRE<span class="dot">.</span></div>
+    <div id="freq">88.1 FM &middot; AUTOGOD MORNING BROADCAST</div>
+    <div id="lamp"><span class="bulb"></span><span id="lampText">STANDBY</span></div>
+  </header>
+  <div id="progress"><div id="progressFill"></div></div>
+  <div id="stage"><div class="ln q">tuning&hellip;</div></div>
+  <footer>
+    <button id="play" disabled>&#9654; PLAY</button>
+    <button id="pause" disabled>&#10073;&#10073; PAUSE</button>
+    <button id="stop" disabled>&#9632; STOP</button>
+    <label class="ctl">SPEED <input type="range" id="speed" min="0.6" max="1.6" step="0.05" value="1"><span id="speedVal">1.00</span></label>
+    <label class="ctl">VOICE <select id="voice"></select></label>
+    <label class="ctl">BRIEF <select id="date"></select></label>
+    <div id="stats"></div>
+  </footer>
+</div>
+
+<script>
+
+"use strict";
+/* ---------- pure helpers (testable in node) ---------- */
+
+// strip markdown-ish markup from one line, keep it speakable
+function stripLine(s) {
+  s = s.replace(/^#{1,6}\s*/, "");            // headings
+  s = s.replace(/\[\[([^\]|]+)(?:\|([^\]]*))?\]\]/g, (m, a, b) => b || a); // wikilinks (alias wins)
+  s = s.replace(/\[([^\]]*)\]/g, "$1");        // [x] links
+  s = s.replace(/\*\*([^*]+)\*\*/g, "$1");     // bold
+  s = s.replace(/__([^_]+)__/g, "$1");
+  s = s.replace(/(^|\s)_([^_]+)_(?=\s|$)/g, "$1$2"); // italic
+  s = s.replace(/`([^`]*)`/g, "$1");           // code
+  s = s.replace(/^>\s?/, "");                  // blockquote
+  s = s.replace(/\s+/g, " ");
+  return s.trim();
+}
+
+// split a stripped line into words with char offsets
+function buildWords(line) {
+  const words = [];
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(line)) !== null) {
+    words.push({ t: m[0], start: m.index });
+  }
+  return words;
+}
+
+// rank voices: northern english first, then en-GB, then any en
+function scoreVoice(v) {
+  const name = (v.name || "").toLowerCase();
+  const lang = (v.lang || "").toLowerCase();
+  if (/northern/.test(name)) return 100;
+  if (lang.startsWith("en-gb")) return 80;
+  if (lang.startsWith("en-")) return 40;
+  return 10;
+}
+
+function pickVoice(voices) {
+  if (!voices.length) return null;
+  let best = voices[0], bs = -1;
+  for (const v of voices) {
+    const s = scoreVoice(v);
+    if (s > bs) { bs = s; best = v; }
+  }
+  return best;
+}
+
+// classify a line for styling
+function lineClass(line) {
+  const t = line.trim();
+  if (/^#{1,6}\s/.test(line)) return "h";
+  if (/^_.*_$/ .test(t) || t.startsWith("_Full") || t.startsWith("_Review")) return "q";
+  return "";
+}
+
+/* ---------- state ---------- */
+const stage = document.getElementById("stage");
+const progressFill = document.getElementById("progressFill");
+const lampText = document.getElementById("lampText");
+const statsEl = document.getElementById("stats");
+const playBtn = document.getElementById("play");
+const pauseBtn = document.getElementById("pause");
+const stopBtn = document.getElementById("stop");
+const speedEl = document.getElementById("speed");
+const speedVal = document.getElementById("speedVal");
+const voiceSel = document.getElementById("voice");
+const dateSel = document.getElementById("date");
+
+let lines = [];        // [{text, words:[{t,start}], spans:[el], cumChars}]
+let totalWords = 0;
+let totalChars = 0;
+let typChars = 0;      // typewriter clock, in chars
+let voiceChars = 0;    // voice clock, in chars (master when speaking)
+let playing = false;
+let paused = false;
+let done = false;
+let voiceDone = true;  // true when the voice has finished (or is off)
+let voiceMode = false; // false => typewriter-only mode
+let gen = 0;           // generation counter: kills stale utterance callbacks
+let cps = 16;          // typewriter chars/sec
+
+function setLamp(txt) {
+  lampText.textContent = txt;
+  document.body.classList.toggle("onair", txt === "ON AIR");
+}
+
+function w_charCount(words) {
+  let n = 0;
+  for (const w of words) n += w.t.length;
+  return n;
+}
+
+function buildStage(md) {
+  stage.innerHTML = "";
+  lines = [];
+  totalWords = 0;
+  totalChars = 0;
+  const raw = md.split("\n");
+  for (const rl of raw) {
+    const text = stripLine(rl);
+    if (!text) {
+      const d = document.createElement("div");
+      d.className = "ln";
+      d.innerHTML = "&nbsp;";
+      stage.appendChild(d);
+      continue;
+    }
+    const words = buildWords(text);
+    const cls = lineClass(rl);
+    const d = document.createElement("div");
+    d.className = "ln" + (cls ? " " + cls : "");
+    const spans = [];
+    let prevEnd = 0;
+    for (const w of words) {
+      if (w.start > prevEnd) d.appendChild(document.createTextNode(text.slice(prevEnd, w.start)));
+      const sp = document.createElement("span");
+      sp.className = "w";
+      sp.textContent = "";
+      d.appendChild(sp);
+      spans.push(sp);
+      prevEnd = w.start + w.t.length;
+    }
+    stage.appendChild(d);
+    lines.push({ text, words, spans, cumChars: totalChars });
+    totalChars += w_charCount(words);
+    totalWords += words.length;
+  }
+}
+
+// char position -> [lineIdx, wordIdx]
+function charToWord(ch) {
+  let acc = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    const lc = w_charCount(L.words);
+    if (ch <= acc + lc) {
+      let wa = acc;
+      for (let j = 0; j < L.words.length; j++) {
+        if (ch < wa + L.words[j].t.length) return [i, j];
+        wa += L.words[j].t.length;
+      }
+      return [i, L.words.length - 1];
+    }
+    acc += lc;
+  }
+  return [lines.length, 0];
+}
+
+/* ---------- render loop ---------- */
+function render() {
+  const target = Math.max(typChars, voiceChars);
+  let acc = 0;
+  for (let i = 0; i < lines.length; i++) {
+    const L = lines[i];
+    for (let j = 0; j < L.words.length; j++) {
+      const ws = acc;
+      const we = acc + L.words[j].t.length;
+      const sp = L.spans[j];
+      let shown;
+      if (target >= we) shown = L.words[j].t;
+      else if (target > ws) shown = L.words[j].t.slice(0, Math.max(0, target - ws));
+      else shown = "";
+      if (sp.textContent !== shown) sp.textContent = shown;
+      sp.classList.toggle("on", shown.length > 0);
+      sp.classList.toggle("now", playing && !paused && !done && target > ws && target < we);
+      acc = we;
+    }
+  }
+  const frac = totalChars ? Math.min(1, target / totalChars) : 0;
+  progressFill.style.width = (frac * 100).toFixed(2) + "%";
+}
+
+function finish() {
+  if (done) return;
+  done = true;
+  playing = false;
+  paused = false;
+  voiceChars = totalChars;
+  typChars = totalChars;
+  setLamp("SIGN OFF");
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  pauseBtn.innerHTML = "&#10073;&#10073; PAUSE";
+  stopBtn.disabled = false;
+  render();
+}
+
+let lastT = 0;
+function tick(t) {
+  if (!lastT) lastT = t;
+  const dt = Math.min(0.1, (t - lastT) / 1000);
+  lastT = t;
+  if (playing && !paused && !done) {
+    // typewriter chases the voice clock; 3x pace when the voice is ahead
+    const behind = voiceChars - typChars;
+    const mult = (voiceMode && behind > 20) ? 3 : 1;
+    const pace = cps * parseFloat(speedEl.value) * mult;
+    typChars = Math.min(totalChars, typChars + pace * dt);
+    if (typChars >= totalChars && (!voiceMode || voiceDone)) finish();
+    render();
+  }
+  requestAnimationFrame(tick);
+}
+
+/* ---------- speech ---------- */
+const synth = window.speechSynthesis || null;
+
+function currentVoice() {
+  const v = voices.find(x => x.name === voiceSel.value);
+  return v || null;
+}
+
+function speakLine(i, g) {
+  const u = new SpeechSynthesisUtterance(lines[i].text);
+  const v = currentVoice();
+  if (v) { u.voice = v; u.lang = v.lang; }
+  u.rate = parseFloat(speedEl.value);
+  u.pitch = 1;
+  u.onboundary = (e) => {
+    if (g !== gen) return;
+    if (e.name && e.name !== "word") return;
+    const ci = (typeof e.charIndex === "number" && e.charIndex >= 0) ? e.charIndex : 0;
+    let wa = 0, wj = lines[i].words.length - 1;
+    for (let j = 0; j < lines[i].words.length; j++) {
+      if (ci < wa + lines[i].words[j].t.length) { wj = j; break; }
+      wa += lines[i].words[j].t.length;
+    }
+    voiceChars = Math.min(totalChars, lines[i].cumChars + wa);
+    render();
+  };
+  const advance = () => {
+    if (g !== gen) return;
+    if (i + 1 >= lines.length) {
+      voiceDone = true;
+      voiceChars = totalChars;
+      render();
+    } else {
+      speakLine(i + 1, g);
+    }
+  };
+  u.onend = advance;
+  u.onerror = (e) => {
+    if (e.error === "interrupted" || e.error === "canceled") return;
+    advance();
+  };
+  synth.speak(u);
+}
+
+function play() {
+  if (done) {
+    done = false;
+    typChars = 0;
+    voiceChars = 0;
+  }
+  playing = true;
+  paused = false;
+  voiceDone = false;
+  gen++;
+  const g = gen;
+  voiceMode = !!(synth && voices.length);
+  setLamp(voiceMode ? "ON AIR" : "TYPEWRITER");
+  playBtn.disabled = true;
+  pauseBtn.disabled = !voiceMode;
+  stopBtn.disabled = false;
+  if (voiceMode) {
+    synth.cancel();
+    const [li] = charToWord(Math.min(voiceChars, Math.max(0, totalChars - 1)));
+    speakLine(Math.min(li, lines.length - 1), g);
+  }
+}
+
+function pause() {
+  if (!playing || !voiceMode) return;
+  paused = !paused;
+  if (paused) {
+    if (synth) synth.pause();
+    setLamp("PAUSED");
+    pauseBtn.innerHTML = "&#9654; RESUME";
+  } else {
+    if (synth) synth.resume();
+    setLamp("ON AIR");
+    pauseBtn.innerHTML = "&#10073;&#10073; PAUSE";
+  }
+}
+
+function stop() {
+  gen++;
+  if (synth) synth.cancel();
+  playing = false;
+  paused = false;
+  done = false;
+  voiceDone = true;
+  typChars = 0;
+  voiceChars = 0;
+  setLamp("STANDBY");
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  pauseBtn.innerHTML = "&#10073;&#10073; PAUSE";
+  stopBtn.disabled = false;
+  render();
+}
+
+/* ---------- voices ---------- */
+let voices = [];
+function loadVoices() {
+  if (!synth) return;
+  voices = synth.getVoices() || [];
+  if (!voices.length) {
+    voiceSel.innerHTML = '<option value="__type__">typewriter only (no voices)</option>';
+    voiceSel.value = "__type__";
+    return;
+  }
+  const best = pickVoice(voices);
+  const sorted = voices.slice().sort((a, b) => scoreVoice(b) - scoreVoice(a));
+  voiceSel.innerHTML = "";
+  for (const v of sorted) {
+    const o = document.createElement("option");
+    o.value = v.name;
+    o.textContent = v.name + " (" + v.lang + ")";
+    voiceSel.appendChild(o);
+  }
+  if (best) voiceSel.value = best.name;
+}
+
+/* ---------- data ---------- */
+async function loadBriefs() {
+  const r = await fetch("/briefs");
+  const list = await r.json();
+  dateSel.innerHTML = "";
+  for (const b of list) {
+    const o = document.createElement("option");
+    o.value = b.date;
+    o.textContent = b.date;
+    dateSel.appendChild(o);
+  }
+  if (list.length) loadBrief(list[0].date);
+}
+
+async function loadBrief(date) {
+  const r = await fetch("/brief?date=" + encodeURIComponent(date));
+  if (!r.ok) {
+    stage.innerHTML = '<div class="ln q">no such brief</div>';
+    return;
+  }
+  const b = await r.json();
+  gen++;
+  if (synth) synth.cancel();
+  playing = false; paused = false; done = false;
+  voiceDone = true;
+  typChars = 0; voiceChars = 0;
+  setLamp("STANDBY");
+  playBtn.disabled = false;
+  pauseBtn.disabled = true;
+  stopBtn.disabled = false;
+  buildStage(b.text);
+  render();
+  statsEl.innerHTML =
+    "<b>" + totalWords + "</b> words &middot; <b>" + totalChars + "</b> chars<br>" +
+    "brief " + b.date + " &middot; " + b.file;
+}
+
+/* ---------- wiring ---------- */
+playBtn.addEventListener("click", play);
+pauseBtn.addEventListener("click", pause);
+stopBtn.addEventListener("click", stop);
+speedEl.addEventListener("input", () => {
+  speedVal.textContent = parseFloat(speedEl.value).toFixed(2);
+});
+dateSel.addEventListener("change", () => loadBrief(dateSel.value));
+if (synth) {
+  synth.onvoiceschanged = loadVoices;
+  loadVoices();
+} else {
+  voiceSel.disabled = true;
+  voiceSel.innerHTML = '<option>typewriter only (no speechSynthesis)</option>';
+}
+requestAnimationFrame(tick);
+loadBriefs();
+
+</script>
+</body>
+</html>

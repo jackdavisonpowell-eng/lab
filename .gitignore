@@ -1,0 +1,19 @@
+# Jack's actual data. It stays on thebeast; it is not published anywhere.
+# Projects that need it ship a fixture and fall back to that.
+
+# 887 real note titles out of the Obsidian vault, and the screenshot of them
+rain/titles.json
+rain/screenshot.png
+
+# a real morning brief, with real detail in it
+wire/screenshot.png
+
+# real queue rows and 24h of agent journals
+v100-char/brain-journal-24h.log
+v100-char/worker-journal-24h.log
+v100-char/tasks.json
+v100-char/per-task.md
+
+__pycache__/
+*.pyc
+.DS_Store

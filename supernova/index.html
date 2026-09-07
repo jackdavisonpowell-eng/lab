@@ -1,0 +1,444 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SUPERNOVA — 22:00 loop timer</title>
+<style>
+  html,body{margin:0;height:100%;background:#070503;overflow:hidden}
+  #sky{position:fixed;inset:0;width:100%;height:100%;display:block}
+  #hud{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;
+       font-family:"Segoe UI",system-ui,sans-serif;color:#f5ead8;user-select:none;pointer-events:none}
+  #loop{font-size:15px;letter-spacing:.55em;font-style:italic;opacity:.75;margin-left:.55em}
+  #time{font-size:clamp(90px,22vw,220px);font-weight:200;font-style:italic;letter-spacing:.04em;line-height:.9;
+        font-variant-numeric:tabular-nums;text-shadow:0 0 34px rgba(255,170,60,.25)}
+  #bar{width:min(46vw,520px);height:2px;background:rgba(245,234,216,.14)}
+  #fill{height:100%;width:0%;background:#ffaa3c;box-shadow:0 0 12px rgba(255,170,60,.8)}
+  #phase{font-size:13px;letter-spacing:.42em;font-style:italic;opacity:.65;margin-left:.42em;min-height:1em}
+  #controls{display:flex;gap:14px;margin-top:26px;pointer-events:auto}
+  #controls button{background:none;border:1px solid rgba(245,234,216,.35);color:#f5ead8;
+       font:italic 13px/1 "Segoe UI",system-ui,sans-serif;letter-spacing:.3em;padding:11px 22px 11px 25px;
+       cursor:pointer;transition:all .25s}
+  #controls button:hover{border-color:#ffaa3c;color:#ffaa3c;box-shadow:0 0 14px rgba(255,170,60,.25)}
+  #controls button.on{border-color:#ffaa3c;color:#ffaa3c}
+  #tag{position:fixed;bottom:26px;left:0;right:0;text-align:center;font-size:11px;letter-spacing:.35em;
+       font-style:italic;opacity:.4;margin-left:.35em}
+</style>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<div id="hud">
+  <div id="loop">LOOP 000</div>
+  <div id="time">22:00</div>
+  <div id="bar"><div id="fill"></div></div>
+  <div id="phase">THE SUN IS CALM</div>
+  <div id="controls">
+    <button id="start">START</button>
+    <button id="hold">HOLD</button>
+    <button id="reset">RESET</button>
+    <button id="snd" class="on">SOUND</button>
+  </div>
+</div>
+<div id="tag">TWENTY-TWO MINUTES, THEN THE SUN TAKES EVERYTHING WITH IT</div>
+<script>
+"use strict";
+// == pure ==
+var TAU = Math.PI * 2;
+var DEFAULT_LOOP_S = 22 * 60;
+
+function loopLength(){
+  try {
+    var m = /[?&]seconds=(\d+)/.exec((typeof location !== "undefined" && location.search) || "");
+    if (m) { var n = parseInt(m[1], 10); if (n >= 3 && n <= 7200) return n; }
+  } catch (e) {}
+  return DEFAULT_LOOP_S;
+}
+
+// p = fraction of the loop already elapsed, 0..1
+function phaseFor(p){
+  if (p >= 0.95) return "final";
+  if (p >= 0.70) return "agitated";
+  return "calm";
+}
+
+function fmt(s){
+  s = Math.max(0, Math.ceil(s));
+  var m = Math.floor(s / 60), r = s % 60;
+  return (m < 10 ? "0" + m : "" + m) + ":" + (r < 10 ? "0" + r : "" + r);
+}
+
+function lerp(a, b, t){ return a + (b - a) * t; }
+function lerpC(c1, c2, t){ return [lerp(c1[0],c2[0],t), lerp(c1[1],c2[1],t), lerp(c1[2],c2[2],t)]; }
+function rgb(c, a){ return "rgba(" + (c[0]|0) + "," + (c[1]|0) + "," + (c[2]|0) + "," + a + ")"; }
+
+// per-phase motion: f = breath Hz, amp = breath radius fraction, spike = corona spikiness, ag = agitate 0..1
+function phaseParams(phase){
+  if (phase === "final")    return { f: 0.85, amp: 0.045, spike: 1.0,  ag: 1.0 };
+  if (phase === "agitated") return { f: 0.33, amp: 0.030, spike: 0.55, ag: 0.5 };
+  return { f: 0.125, amp: 0.020, spike: 0.22, ag: 0.0 };
+}
+// == dom ==
+var cv = document.getElementById("sky");
+var ctx = cv.getContext("2d");
+var elTime = document.getElementById("time");
+var elLoop = document.getElementById("loop");
+var elPhase = document.getElementById("phase");
+var elFill = document.getElementById("fill");
+var btnStart = document.getElementById("start");
+var btnHold = document.getElementById("hold");
+var btnReset = document.getElementById("reset");
+var btnSnd = document.getElementById("snd");
+
+var LOOP = loopLength();
+var state = {
+  remaining: LOOP,
+  running: false,
+  endAt: 0,
+  nova: null,
+  novaDur: 3.4,
+  loops: 0,
+  sound: true,
+  last: 0
+};
+try { state.loops = parseInt(localStorage.getItem("supernova.loops") || "0", 10) || 0; } catch (e) {}
+
+var stars = [];
+(function seedStars(){
+  var n = Math.floor((innerWidth || 1280) * (innerHeight || 800) / 9000);
+  for (var i = 0; i < n; i++) stars.push({
+    x: Math.random(), y: Math.random(),
+    r: Math.random() * 1.3 + 0.3,
+    ph: Math.random() * TAU, sp: 0.3 + Math.random() * 0.8
+  });
+})();
+
+var dust = [];
+(function seedDust(){
+  for (var i = 0; i < 70; i++) dust.push({
+    x: Math.random(), y: Math.random(),
+    v: 0.008 + Math.random() * 0.02,
+    r: 0.6 + Math.random() * 1.8,
+    a: 0.05 + Math.random() * 0.12
+  });
+})();
+
+function resize(){
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  cv.width = Math.floor((innerWidth || 1280) * dpr);
+  cv.height = Math.floor((innerHeight || 800) * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener("resize", resize);
+resize();
+
+function saveLoops(){ try { localStorage.setItem("supernova.loops", String(state.loops)); } catch (e) {} }
+
+function phaseNow(){
+  if (state.nova !== null) return "nova";
+  var p = 1 - state.remaining / LOOP;
+  return phaseFor(p);
+}
+
+function setPhaseText(ph){
+  var t = ph === "final" ? "THE SUN IS ABOUT TO GO NOVA"
+        : ph === "agitated" ? "THE SUN IS GROWING UNSTABLE"
+        : ph === "nova" ? "THE SUN IS GONE"
+        : "THE SUN IS CALM";
+  if (elPhase.textContent !== t) elPhase.textContent = t;
+}
+
+function hud(){
+  elTime.textContent = fmt(state.remaining);
+  var l = state.loops;
+  elLoop.textContent = "LOOP " + (l < 10 ? "00" : l < 100 ? "0" : "") + l;
+  var p = state.nova !== null ? 1 : 1 - state.remaining / LOOP;
+  elFill.style.width = (p * 100).toFixed(2) + "%";
+  setPhaseText(phaseNow());
+}
+
+// ---- audio ----
+var AC = null, master = null, drone = null, swell = null;
+function audio(){
+  if (AC) return AC;
+  var Ctx = (typeof window !== "undefined") && (window.AudioContext || window.webkitAudioContext);
+  if (!Ctx) return null;
+  AC = new Ctx();
+  master = AC.createGain();
+  master.gain.value = state.sound ? 0.5 : 0;
+  master.connect(AC.destination);
+  startDrone();
+  return AC;
+}
+function startDrone(){
+  if (drone || !AC) return;
+  drone = { g: AC.createGain() };
+  drone.g.gain.value = 0.016;
+  drone.g.connect(master);
+  var freqs = [55, 82.41, 110.2], gs = [0.6, 0.35, 0.18];
+  for (var i = 0; i < 3; i++){
+    var o = AC.createOscillator();
+    o.type = "sine"; o.frequency.value = freqs[i];
+    var g = AC.createGain(); g.gain.value = gs[i];
+    o.connect(g); g.connect(drone.g); o.start();
+  }
+  var lfo = AC.createOscillator();
+  lfo.frequency.value = 0.06;
+  var lg = AC.createGain(); lg.gain.value = 0.006;
+  lfo.connect(lg); lg.connect(drone.g.gain); lfo.start();
+}
+function startSwell(){
+  if (!AC || swell) return;
+  var t = AC.currentTime;
+  var dur = Math.min(60, Math.max(8, state.remaining));
+  swell = { o: AC.createOscillator(), g: AC.createGain() };
+  swell.o.type = "sine";
+  swell.o.frequency.setValueAtTime(96, t);
+  swell.o.frequency.exponentialRampToValueAtTime(240, t + dur);
+  swell.g.gain.setValueAtTime(0.0001, t);
+  swell.g.gain.exponentialRampToValueAtTime(0.05, t + dur * 0.8);
+  swell.o.connect(swell.g); swell.g.connect(master);
+  swell.o.start(t);
+  swell.o.stop(t + dur + 0.5);
+  swell.o.onended = function(){ swell = null; };
+}
+function stopSwell(){
+  if (!swell || !AC) return;
+  var t = AC.currentTime, o = swell.o, g = swell.g;
+  swell = null;
+  g.gain.cancelScheduledValues(t);
+  g.gain.setValueAtTime(Math.max(0.0001, g.gain.value), t);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.4);
+  o.stop(t + 0.5);
+}
+function bell(time, gain){
+  var parts = [440, 659.25, 880, 1174.66], gs = [1, 0.55, 0.32, 0.18];
+  for (var i = 0; i < 4; i++){
+    var o = AC.createOscillator();
+    o.type = "sine";
+    o.frequency.value = parts[i] * (i % 2 ? 1.004 : 0.997);
+    var g = AC.createGain();
+    g.gain.setValueAtTime(0.0001, time);
+    g.gain.exponentialRampToValueAtTime(gain * gs[i], time + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, time + 2.2);
+    o.connect(g); g.connect(master);
+    o.start(time); o.stop(time + 2.3);
+  }
+}
+function whoosh(time){
+  var len = Math.floor(AC.sampleRate * 2.2);
+  var buf = AC.createBuffer(1, len, AC.sampleRate);
+  var d = buf.getChannelData(0);
+  for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+  var src = AC.createBufferSource();
+  src.buffer = buf;
+  var bp = AC.createBiquadFilter();
+  bp.type = "bandpass"; bp.Q.value = 0.8;
+  bp.frequency.setValueAtTime(140, time);
+  bp.frequency.exponentialRampToValueAtTime(1600, time + 1.2);
+  bp.frequency.exponentialRampToValueAtTime(90, time + 2.1);
+  var g = AC.createGain();
+  g.gain.setValueAtTime(0.0001, time);
+  g.gain.exponentialRampToValueAtTime(0.14, time + 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, time + 2.2);
+  src.connect(bp); bp.connect(g); g.connect(master);
+  src.start(time);
+}
+function novaSound(){
+  if (!AC) return;
+  if (AC.state === "suspended") AC.resume();
+  var t = AC.currentTime;
+  whoosh(t);
+  bell(t + 0.15, 0.30);
+  bell(t + 1.25, 0.20);
+  bell(t + 2.35, 0.12);
+}
+
+function startNova(){
+  state.nova = 0;
+  state.running = false;
+  stopSwell();
+  novaSound();
+}
+
+// ---- draw ----
+var AMBER = [255, 170, 60], RED = [255, 70, 40], HOT = [255, 236, 190];
+
+function draw(t, dt, ph){
+  var w = innerWidth || 1280, h = innerHeight || 800;
+  var cx = w / 2, cy = h / 2;
+  var R0 = Math.min(w, h) * 0.16;
+  var pp = phaseParams(ph === "nova" ? "final" : ph);
+  var ag = pp.ag;
+  var flick = ph === "final" ? 1 + 0.07 * Math.sin(t * 13.7) * Math.sin(t * 7.3) : 1;
+  var breath = 1 + pp.amp * Math.sin(t * pp.f * TAU);
+  var R = R0 * breath * flick;
+  var col = lerpC(AMBER, RED, ag);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = "#070503";
+  ctx.fillRect(0, 0, w, h);
+
+  // starfield
+  for (var i = 0; i < stars.length; i++){
+    var s = stars[i];
+    var a = 0.25 + 0.35 * (0.5 + 0.5 * Math.sin(t * s.sp + s.ph));
+    ctx.fillStyle = "rgba(245,234,216," + a.toFixed(3) + ")";
+    ctx.fillRect(s.x * w, s.y * h, s.r, s.r);
+  }
+
+  // sun glow
+  var glowR = R * (2.1 + 0.35 * ag);
+  var glow = ctx.createRadialGradient(cx, cy, R * 0.4, cx, cy, glowR);
+  glow.addColorStop(0, rgb(col, (0.30 + 0.25 * ag) * flick));
+  glow.addColorStop(0.5, rgb(col, (0.10 + 0.10 * ag) * flick));
+  glow.addColorStop(1, rgb(col, 0));
+  ctx.fillStyle = glow;
+  ctx.beginPath(); ctx.arc(cx, cy, glowR, 0, TAU); ctx.fill();
+
+  // spiky corona
+  var SEG = 96;
+  var cgrad = ctx.createRadialGradient(cx, cy, R * 0.7, cx, cy, R * 1.5);
+  cgrad.addColorStop(0, rgb(col, 0.5 * flick));
+  cgrad.addColorStop(0.6, rgb(col, 0.18 * flick));
+  cgrad.addColorStop(1, rgb(col, 0));
+  ctx.fillStyle = cgrad;
+  ctx.beginPath();
+  for (var k = 0; k <= SEG; k++){
+    var th = k / SEG * TAU;
+    var n = Math.sin(th * 3 + t * 0.7) * 0.5 + Math.sin(th * 7 - t * 1.3) * 0.3 + Math.sin(th * 11 + t * 2.1) * 0.2;
+    var rr = R * (1 + 0.16 * pp.spike * n) * 1.12;
+    var x = cx + Math.cos(th) * rr, y = cy + Math.sin(th) * rr;
+    if (k === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  }
+  ctx.closePath(); ctx.fill();
+
+  // core
+  var core = ctx.createRadialGradient(cx, cy, 0, cx, cy, R);
+  core.addColorStop(0, rgb(HOT, 0.98 * flick));
+  core.addColorStop(0.55, rgb(lerpC(HOT, col, 0.7), 0.95 * flick));
+  core.addColorStop(1, rgb(col, 0.9 * flick));
+  ctx.fillStyle = core;
+  ctx.beginPath(); ctx.arc(cx, cy, R, 0, TAU); ctx.fill();
+
+  // dust
+  for (var j = 0; j < dust.length; j++){
+    var d = dust[j];
+    d.y -= d.v * dt * (1 + 2 * ag);
+    if (d.y < -0.02) { d.y = 1.02; d.x = Math.random(); }
+    ctx.fillStyle = rgb(col, d.a * (0.6 + 0.4 * flick));
+    ctx.beginPath(); ctx.arc(d.x * w, d.y * h, d.r, 0, TAU); ctx.fill();
+  }
+
+  // red edge vignette in final phase
+  if (ag > 0){
+    var vg = ctx.createRadialGradient(cx, cy, Math.min(w, h) * 0.35, cx, cy, Math.max(w, h) * 0.75);
+    vg.addColorStop(0, "rgba(120,20,10,0)");
+    vg.addColorStop(1, "rgba(150,30,15," + (0.35 * ag).toFixed(3) + ")");
+    ctx.fillStyle = vg;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // nova overlay
+  if (state.nova !== null){
+    var nt = state.nova / state.novaDur;      // 0..1 over the whole sequence
+    var flash = Math.max(0, Math.sin(Math.min(1, nt * 2.2) * Math.PI)); // bright early, gone by mid
+    var ring = Math.max(0, Math.min(1, nt * 1.6));
+    if (flash > 0.001){
+      ctx.fillStyle = "rgba(255,244,224," + (0.92 * flash).toFixed(3) + ")";
+      ctx.fillRect(0, 0, w, h);
+    }
+    if (ring < 1){
+      ctx.strokeStyle = "rgba(255,200,120," + (0.8 * (1 - ring)).toFixed(3) + ")";
+      ctx.lineWidth = 3 + 14 * (1 - ring);
+      ctx.beginPath(); ctx.arc(cx, cy, ring * Math.max(w, h) * 0.9, 0, TAU); ctx.stroke();
+    }
+    var dark = Math.max(0, Math.min(1, (nt - 0.45) / 0.35));
+    if (dark > 0){
+      ctx.fillStyle = "rgba(7,5,3," + dark.toFixed(3) + ")";
+      ctx.fillRect(0, 0, w, h);
+      if (dark > 0.5){
+        var la = Math.min(1, (dark - 0.5) * 2);
+        ctx.fillStyle = "rgba(245,234,216," + (0.85 * la).toFixed(3) + ")";
+        ctx.font = "italic 200 " + Math.floor(Math.min(w, h) * 0.09) + "px 'Segoe UI', system-ui, sans-serif";
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("LOOP " + (state.loops + 1), cx, cy);
+        ctx.fillStyle = "rgba(245,234,216," + (0.4 * la).toFixed(3) + ")";
+        ctx.font = "italic " + Math.floor(Math.min(w, h) * 0.022) + "px 'Segoe UI', system-ui, sans-serif";
+        ctx.fillText("THE SUN IS GONE — THE LOOP BEGINS AGAIN", cx, cy + Math.min(w, h) * 0.09);
+      }
+    }
+  }
+}
+
+// ---- main loop ----
+var lastSwell = false;
+function frame(nowMs){
+  var t = nowMs / 1000;
+  var dt = state.last ? Math.min(0.1, t - state.last) : 0;
+  state.last = t;
+
+  if (state.nova !== null){
+    state.nova += dt;
+    if (state.nova >= state.novaDur){
+      state.nova = null;
+      state.loops += 1;
+      saveLoops();
+      state.remaining = LOOP;
+      state.endAt = t + LOOP;
+      state.running = true;
+    }
+  } else if (state.running){
+    state.remaining = Math.max(0, state.endAt - t);
+    if (state.remaining <= 0) startNova();
+  }
+
+  var ph = phaseNow();
+  var wantSwell = state.running && ph === "final" && state.sound;
+  if (wantSwell && !lastSwell){
+    audio();
+    if (AC && AC.state === "running") startSwell();
+  }
+  if (!wantSwell && lastSwell) stopSwell();
+  lastSwell = wantSwell;
+
+  draw(t, dt, ph);
+  hud();
+  requestAnimationFrame(frame);
+}
+
+// ---- controls ----
+function nowS(){ return performance.now() / 1000; }
+btnStart.addEventListener("click", function(){
+  audio();
+  if (AC && AC.state === "suspended") AC.resume();
+  if (state.running) return;
+  if (state.nova !== null) return;
+  state.endAt = nowS() + state.remaining;
+  state.running = true;
+  btnStart.textContent = "RUNNING";
+});
+btnHold.addEventListener("click", function(){
+  if (!state.running) return;
+  state.remaining = Math.max(0, state.endAt - nowS());
+  state.running = false;
+  btnStart.textContent = "START";
+});
+btnReset.addEventListener("click", function(){
+  state.running = false;
+  state.nova = null;
+  state.remaining = LOOP;
+  stopSwell();
+  btnStart.textContent = "START";
+});
+btnSnd.addEventListener("click", function(){
+  state.sound = !state.sound;
+  btnSnd.classList.toggle("on", state.sound);
+  if (state.sound) { audio(); if (AC && AC.state === "suspended") AC.resume(); }
+  if (master) master.gain.value = state.sound ? 0.5 : 0;
+});
+
+hud();
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

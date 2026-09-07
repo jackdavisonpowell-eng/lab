@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STREAK · pre-calc drill</title>
+<style>
+  :root{
+    --bg:#0a0a0c; --panel:#121216; --line:#26262e;
+    --ink:#f2f2f5; --dim:#8a8a94; --amber:#ffb454; --amber2:#ffd9a0;
+    --good:#ffd9a0; --bad:#ff7a5c;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--ink);
+    font-family:"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  body{min-height:100vh}
+  .wrap{max-width:760px;margin:0 auto;padding:28px 20px 80px}
+  header{display:flex;align-items:baseline;justify-content:space-between;
+    border-bottom:1px solid var(--line);padding-bottom:14px;margin-bottom:22px}
+  .brand{font-size:26px;font-weight:800;letter-spacing:.14em;font-style:italic}
+  .brand b{color:var(--amber)}
+  .stats{display:flex;gap:22px;align-items:baseline}
+  .stat{text-align:right}
+  .stat .n{font-size:30px;font-weight:800;line-height:1}
+  .stat .l{font-size:10px;letter-spacing:.18em;color:var(--dim);text-transform:uppercase}
+  #streakN.hot{color:var(--amber)}
+  .sub{font-size:11px;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;
+    margin:0 0 18px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px}
+  .chip{background:transparent;border:1px solid var(--line);color:var(--dim);
+    font:600 12px/1 inherit;letter-spacing:.06em;padding:9px 12px;cursor:pointer;
+    text-transform:uppercase;transition:.12s}
+  .chip:hover{border-color:var(--amber);color:var(--ink)}
+  .chip.on{background:var(--amber);border-color:var(--amber);color:#141414}
+  .card{background:var(--panel);border:1px solid var(--line);padding:30px 28px}
+  .unit{font-size:11px;letter-spacing:.2em;color:var(--amber);text-transform:uppercase;
+    margin-bottom:14px}
+  .problem{font-size:24px;line-height:1.5;font-weight:600;margin:0 0 26px}
+  .problem .frac{display:inline-block;vertical-align:middle;text-align:center;margin:0 2px}
+  .problem .frac .top{display:block;border-bottom:2px solid var(--ink);padding:0 4px 1px}
+  .problem .frac .bot{display:block;padding:1px 4px 0}
+  .answerrow{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  #answer{flex:1;min-width:200px;background:transparent;border:none;
+    border-bottom:2px solid var(--line);color:var(--ink);font:600 24px/1.3 inherit;
+    padding:8px 4px;outline:none}
+  #answer:focus{border-bottom-color:var(--amber)}
+  #answer.bad{border-bottom-color:var(--bad)}
+  #answer.good{border-bottom-color:var(--good)}
+  .btn{background:var(--amber);border:none;color:#141414;font:800 13px/1 inherit;
+    letter-spacing:.12em;text-transform:uppercase;padding:13px 20px;cursor:pointer}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--dim)}
+  .btn.ghost:hover{border-color:var(--amber);color:var(--ink)}
+  .feedback{margin-top:22px;font-size:15px;line-height:1.7;min-height:22px}
+  .feedback .win{color:var(--good);font-weight:700;letter-spacing:.06em}
+  .feedback .lose{color:var(--bad);font-weight:700;letter-spacing:.06em}
+  .feedback .sol{color:var(--dim)}
+  .hint{color:var(--dim);font-size:13px;margin-top:10px}
+  .flash{animation:flash .5s}
+  @keyframes flash{0%{background:#2a1f10}100%{background:var(--panel)}}
+  .big{font-size:15px;color:var(--dim);margin-top:18px;text-align:center}
+  .big b{color:var(--amber);font-size:22px}
+  footer{margin-top:26px;font-size:11px;color:var(--dim);letter-spacing:.08em;
+    display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">ST<b>R</b>EAK</div>
+    <div class="stats">
+      <div class="stat"><div class="n" id="streakN">0</div><div class="l">streak</div></div>
+      <div class="stat"><div class="n" id="bestN">0</div><div class="l">best</div></div>
+      <div class="stat"><div class="n" id="accN">—</div><div class="l">accuracy</div></div>
+    </div>
+  </header>
+
+  <p class="sub">MATH-1113 · units covered so far · practice only</p>
+
+  <div class="chips" id="chips"></div>
+
+  <div class="card" id="card">
+    <div class="unit" id="unit"></div>
+    <div class="problem" id="problem"></div>
+    <div class="answerrow">
+      <input id="answer" autocomplete="off" spellcheck="false"
+             placeholder="your answer — fractions like 3/4, or a,b">
+      <button class="btn" id="check">Check</button>
+      <button class="btn ghost" id="skip">Skip</button>
+    </div>
+    <div class="feedback" id="feedback"></div>
+    <div class="hint" id="hint"></div>
+  </div>
+
+  <div class="big">press <b>Enter</b> to check · <b>S</b> to skip</div>
+  <footer><span>local only · nothing leaves this page</span><span id="foot"></span></footer>
+</div>
+
+<script>
+"use strict";
+/* STREAK — pre-calc drill trainer.
+   Generators for the MATH-1113 units Jack has covered:
+   1.5 quadratics · 1.6 other equations · 2.2 functions · 2.3 slope ·
+   2.4 parallel/perpendicular · 2.5 transformations · 2.6 composites ·
+   2.7 inverses · 3.1 quadratic functions · 3.2 polynomial graphs ·
+   3.3 dividing polynomials.
+   Pure functions (no DOM) so a Node harness can drive them headless. */
+
+/* ---------- tiny math helpers ---------- */
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){var t=b;b=a%b;a=t;}return a||1;}
+function randInt(n){return Math.floor(Math.random()*n);}            // 0..n-1
+function pick(arr){return arr[randInt(arr.length)];}
+function ri(lo,hi){return lo+randInt(hi-lo+1);}                     // inclusive
+function nz(lo,hi){var v;do{v=ri(lo,hi);}while(v===0);return v;}
+
+/* ---------- fraction helpers ---------- */
+function fracStr(num,den){
+  if(den<0){num=-num;den=-den;}
+  var g=gcd(num,den);num/=g;den/=g;
+  if(den===1)return String(num);
+  return num+"/"+den;
+}
+function fracToNum(s){
+  s=String(s).trim();
+  var m=s.match(/^(-?\d+(?:\.\d+)?)(?:\/(-?\d+(?:\.\d+)?))?$/);
+  if(!m)return NaN;
+  var a=parseFloat(m[1]);
+  if(m[2]!==undefined){var b=parseFloat(m[2]);if(b===0)return NaN;return a/b;}
+  return a;
+}
+function fracEq(a,b,tol){tol=tol||1e-9;return Math.abs(a-b)<tol;}
+
+/* ---------- function / expression builders ---------- */
+/* Build a linear function f(x)=a*x+b with integer a,b. */
+function lin(a,b){return {a:a,b:b};}
+function linStr(f){
+  var s="";
+  if(f.a===1)s="x";else if(f.a===-1)s="-x";else if(f.a!==0)s=f.a+"x";
+  if(f.b>0)s+=(s?" + ":"")+f.b;else if(f.b<0)s+=" - "+(-f.b);
+  if(!s)s="0";
+  return s;
+}
+function linEval(f,x){return f.a*x+f.b;}
+function quad(a,b,c){return {a:a,b:b,c:c};}
+function quadStr(q){
+  var s="";
+  if(q.a===1)s="x²";else if(q.a===-1)s="-x²";else s=q.a+"x²";
+  if(q.b>0)s+=" + "+(q.b===1?"":q.b)+"x";else if(q.b<0)s+=" - "+(q.b===-1?"":-q.b)+"x";
+  if(q.c>0)s+=" + "+q.c;else if(q.c<0)s+=" - "+(-q.c);
+  if(!s)s="0";
+  return s;
+}
+function xpow(pow){
+  if(pow===1)return "x";
+  if(pow===2)return "x²";
+  if(pow===3)return "x³";
+  return "x^"+pow;
+}
+function polyStr(coeffs){ // coeffs high->low, e.g. [1,-3,2] => x²-3x+2
+  var s="";
+  for(var i=0;i<coeffs.length;i++){
+    var c=coeffs[i],pow=coeffs.length-1-i;
+    if(c===0)continue;
+    var sign=c<0?"-":"+" ;
+    var mag=Math.abs(c);
+    var term=(pow===0?String(mag):((mag===1?"":mag)+xpow(pow)));
+    s+=(s===("")?"":(sign==="-"?" - ":" + "))+term;
+  }
+  if(s==="")s="0";
+  return s;
+}
+function polyEval(coeffs,x){
+  var r=0;for(var i=0;i<coeffs.length;i++){r=r*x+coeffs[i];}return r;
+}
+
+/* ---------- answer formats ---------- */
+/* Each generator returns {unit, problem(html), answer (canonical string),
+   accept: [array of acceptable strings], hint, solve(html)} */
+
+var GENERATORS={};
+
+/* 1.5 — solve a quadratic by factoring: x²+bx+c=0 with integer roots */
+GENERATORS["1.5 quadratics"]=function(){
+  var r1=pick([-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9]);
+  var r2=pick([-9,-8,-7,-6,-5,-4,-3,-2,-1,1,2,3,4,5,6,7,8,9]);
+  var b=-(r1+r2),c=r1*r2;
+  var roots=Array.from(new Set([r1,r2]));
+  var ans=roots.map(String).sort(function(a,c){return a-c;}).join(", ");
+  var prob="Solve by factoring:  x² "+(b<0?"- "+(-b):"+ "+b)+"x "+(c<0?"- "+(-c):"+ "+c)+" = 0";
+  var solve="x² "+(b<0?"- "+(-b):"+ "+b)+"x "+(c<0?"- "+(-c):"+ "+c)+
+    " = (x - "+r1+")(x - "+r2+") = 0 → x = "+r1+" or x = "+r2;
+  return {unit:"1.5 quadratics",problem:prob,answer:ans,
+    accept:[ans,roots[0]+","+roots[1],roots[1]+","+roots[0],
+            roots[0]+" or "+roots[1],roots[1]+" or "+roots[0],
+            "x = "+roots[0]+" or x = "+roots[1],"x = "+roots[1]+" or x = "+roots[0],
+            roots[0]+" , "+roots[1],roots[1]+" , "+roots[0]],
+    hint:"factor the left side into two binomials",
+    solve:solve};
+};
+
+/* 1.5 — solve a quadratic with a leading coefficient: a x² + b x + c = 0 */
+GENERATORS["1.5 quadratics (ax²)"]=function(){
+  var a=pick([2,3,4,5]);
+  var r1=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var r2=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var b=-a*(r1+r2),c=a*r1*r2;
+  var roots=Array.from(new Set([r1,r2]));
+  var ans=roots.map(String).sort(function(a,c){return a-c;}).join(", ");
+  var prob="Solve:  "+a+"x² "+(b<0?"- "+(-b):"+ "+b)+"x "+(c<0?"- "+(-c):"+ "+c)+" = 0";
+  var solve=a+"x² "+(b<0?"- "+(-b):"+ "+b)+"x "+(c<0?"- "+(-c):"+ "+c)+
+    " = "+a+"(x - "+r1+")(x - "+r2+") = 0 → x = "+r1+" or x = "+r2;
+  return {unit:"1.5 quadratics (ax²)",problem:prob,answer:ans,
+    accept:[ans,roots[0]+" or "+roots[1],roots[1]+" or "+roots[0],
+            "x = "+roots[0]+" or x = "+roots[1],"x = "+roots[1]+" or x = "+roots[0],
+            roots[0]+" , "+roots[1],roots[1]+" , "+roots[0]],
+    hint:"factor out the leading coefficient first, then factor the trinomial",
+    solve:solve};
+};
+
+/* 1.6 — solve a radical equation: sqrt(x+k) = m  (integer solution) */
+GENERATORS["1.6 radical equations"]=function(){
+  var m=pick([2,3,4,5,6,7,8]);
+  var k=nz(-3,12);
+  var x=m*m-k;
+  var prob="Solve:  √(x "+(k<0?"- "+(-k):"+ "+k)+") = "+m;
+  var solve="square both sides: x "+(k<0?"- "+(-k):"+ "+k)+" = "+m*m+
+    " → x = "+x+"  (check: √("+x+" "+(k<0?"- "+(-k):"+ "+k)+") = "+m+" ✓)";
+  return {unit:"1.6 other equations",problem:prob,answer:String(x),
+    accept:[String(x),"x = "+x,"x="+x],
+    hint:"square both sides, then isolate x",
+    solve:solve};
+};
+
+/* 1.6 — solve an absolute value equation: |x-k| = m */
+GENERATORS["1.6 absolute value"]=function(){
+  var k=nz(-8,8);
+  var m=pick([1,2,3,4,5,6,7]);
+  var a1=k+m,a2=k-m;
+  var ans=[a1,a2].sort(function(a,c){return a-c;}).join(", ");
+  var prob="Solve:  |x "+(k<0?"- "+(-k):"+ "+k)+"| = "+m;
+  var solve="|x "+(k<0?"- "+(-k):"+ "+k)+"| = "+m+" gives x "+(k<0?"- "+(-k):"+ "+k)+
+    " = "+m+" or x "+(k<0?"- "+(-k):"+ "+k)+" = -"+m+
+    " → x = "+a1+" or x = "+a2;
+  return {unit:"1.6 other equations",problem:prob,answer:ans,
+    accept:[ans,a1+" or "+a2,a2+" or "+a1,"x = "+a1+" or x = "+a2,
+            "x = "+a2+" or x = "+a1,a1+" , "+a2,a2+" , "+a1],
+    hint:"split into two cases: inside = +m and inside = −m",
+    solve:solve};
+};
+
+/* 2.2 — evaluate a function at a point: f(x)=ax+b, find f(k) */
+GENERATORS["2.2 evaluate"]=function(){
+  var a=nz(-6,6),b=ri(-9,9),k=nz(-7,7);
+  var f=lin(a,b);
+  var v=linEval(f,k);
+  var prob="If f(x) = "+linStr(f)+", find f("+k+").";
+  return {unit:"2.2 functions",problem:prob,answer:String(v),
+    accept:[String(v),"f("+k+") = "+v,"f("+k+")="+v],
+    hint:"substitute x = "+k+" into the expression",
+    solve:"f("+k+") = "+a+"("+k+") + "+b+" = "+v};
+};
+
+/* 2.2 — domain of a rational function: f(x)=(ax+b)/(cx+d), exclude one value */
+GENERATORS["2.2 domain"]=function(){
+  var a=nz(-5,5),b=ri(-8,8),c=nz(-4,4);
+  // choose x0 so the denominator c*x + d vanishes at integer x0
+  var x0=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var d=-c*x0;
+  var prob="Find the domain of  f(x) = ("+a+"x "+(b<0?"- "+(-b):"+ "+b)+") / ("+c+"x "+(d<0?"- "+(-d):"+ "+d)+").";
+  var solve="the denominator "+c+"x "+(d<0?"- "+(-d):"+ "+d)+" = 0 at x = "+x0+
+    ", so the domain is all real numbers except x = "+x0;
+  return {unit:"2.2 functions",problem:prob,answer:"all reals except x = "+x0,
+    accept:["all reals except x = "+x0,"x ≠ "+x0,"x != "+x0,"x≠"+x0,
+            "all real numbers except x = "+x0,"except x = "+x0,
+            "(-inf, "+x0+") U ("+x0+", inf)","(-∞, "+x0+")∪("+x0+", ∞)"],
+    hint:"the domain excludes where the denominator is zero",
+    solve:solve};
+};
+
+/* 2.3 — slope between two integer points */
+GENERATORS["2.3 slope"]=function(){
+  var x1=ri(-8,8),y1=ri(-8,8);
+  var dx=nz(-6,6),dy=pick([-6,-5,-4,-3,-2,-1,0,1,2,3,4,5,6]);
+  var x2=x1+dx,y2=y1+dy;
+  var m=dy/dx;
+  var mstr=fracStr(dy,dx);
+  var prob="Find the slope of the line through ("+x1+", "+y1+") and ("+x2+", "+y2+").";
+  var solve="m = ("+y2+" - "+y1+") / ("+x2+" - "+x1+") = "+dy+" / "+dx+" = "+mstr;
+  return {unit:"2.3 slope",problem:prob,answer:mstr,
+    accept:[mstr,fracStr(dy,dx),String(m)],
+    hint:"m = (y₂ - y₁) / (x₂ - x₁)",
+    solve:solve};
+};
+
+/* 2.3 — slope from a point-slope line: y - y1 = m(x - x1), find m */
+GENERATORS["2.3 slope (point-slope)"]=function(){
+  var m=pick([-4,-3,-2,-1,1,2,3,4]);
+  var x1=nz(-6,6),y1=ri(-9,9);
+  var prob="What is the slope of the line  y - "+y1+" = "+m+"(x - "+x1+")?";
+  return {unit:"2.3 slope",problem:prob,answer:String(m),
+    accept:[String(m),"m = "+m,"m="+m,"slope = "+m],
+    hint:"point-slope form is y - y₁ = m(x - x₁); m is the coefficient",
+    solve:"the coefficient of (x - "+x1+") is the slope, so m = "+m};
+};
+
+/* 2.4 — parallel/perpendicular: slope of line through P parallel/perp to given line */
+GENERATORS["2.4 parallel/perp"]=function(){
+  var m=pick([-4,-3,-2,-1,1,2,3,4]);
+  var b=ri(-9,9);
+  var px=nz(-6,6),py=ri(-9,9);
+  var perp=Math.random()<0.5;
+  var nm=perp?(-1/m):m;
+  var nmstr=perp?fracStr(-1,m):fracStr(m,1);
+  var word=perp?"perpendicular":"parallel";
+  var prob="Find the slope of the line through ("+px+", "+py+") that is "+word+
+    " to the line  y = "+m+"x "+(b<0?"- "+(-b):"+ "+b)+".";
+  var solve=perp
+    ?"perpendicular slopes are negative reciprocals: m⊥ = -1/"+m+" = "+nmstr
+    :"parallel lines share the same slope: m = "+m;
+  return {unit:"2.4 parallel/perpendicular",problem:prob,answer:nmstr,
+    accept:[nmstr,String(nm)],
+    hint:perp?"perpendicular slopes are negative reciprocals":"parallel lines have equal slopes",
+    solve:solve};
+};
+
+/* 2.5 — transformations: describe the shift of y = f(x - h) + k */
+GENERATORS["2.5 transformations"]=function(){
+  var h=pick([-4,-3,-2,-1,1,2,3,4]);
+  var k=pick([-4,-3,-2,-1,1,2,3,4]);
+  var inner=h>0?("x - "+h):"x + "+(-h);
+  var tail=k>0?(" + "+k):" - "+(-k);
+  var dx=h>0?("right "+h):"left "+(-h);
+  var dy=k>0?("up "+k):"down "+(-k);
+  var ans=dx+" and "+dy;
+  var prob="How is the graph of  y = f("+inner+")"+tail+"  obtained from the graph of y = f(x)?";
+  return {unit:"2.5 transformations",problem:prob,answer:ans,
+    accept:[ans,dy+" and "+dx,"shifted "+dx+" and "+dy,"shift "+dx+" and "+dy],
+    hint:"(x - h) shifts horizontally, + k shifts vertically",
+    solve:"(x - "+h+") shifts "+dx+"; "+tail+" shifts "+dy};
+};
+
+/* 2.6 — composite functions: (f∘g)(x) = f(g(x)), evaluate at a point */
+GENERATORS["2.6 composites"]=function(){
+  var g=lin(nz(-5,5),ri(-8,8));
+  var f=lin(nz(-5,5),ri(-8,8));
+  var k=nz(-5,5);
+  var inner=linEval(g,k);
+  var v=linEval(f,inner);
+  var prob="If f(x) = "+linStr(f)+" and g(x) = "+linStr(g)+", find (f ∘ g)("+k+").";
+  var solve="(f ∘ g)("+k+") = f(g("+k+")) = f("+inner+") = "+v;
+  return {unit:"2.6 composites",problem:prob,answer:String(v),
+    accept:[String(v)],
+    hint:"(f∘g)(x) = f(g(x)) — evaluate g first, then feed it into f",
+    solve:solve};
+};
+
+/* 2.6 — composite function expression: (f∘g)(x) simplified */
+GENERATORS["2.6 composites (expr)"]=function(){
+  var g=lin(nz(-4,4),ri(-6,6));
+  var f=lin(nz(-4,4),ri(-6,6));
+  // (f∘g)(x) = f(g(x)) = a_f*(a_g x + b_g) + b_f = (a_f a_g) x + (a_f b_g + b_f)
+  var A=f.a*g.a, B=f.a*g.b+f.b;
+  var expr=linStr(lin(A,B));
+  var prob="If f(x) = "+linStr(f)+" and g(x) = "+linStr(g)+", find (f ∘ g)(x).";
+  var solve="(f ∘ g)(x) = f(g(x)) = "+expr;
+  return {unit:"2.6 composites",problem:prob,answer:expr,
+    accept:[expr],
+    hint:"substitute g(x) into f and simplify",
+    solve:solve};
+};
+
+/* 2.7 — inverse of a linear function: f(x)=ax+b, find f⁻¹(x) = (x-b)/a */
+GENERATORS["2.7 inverses"]=function(){
+  var a=nz(-5,5),b=ri(-8,8);
+  var f=lin(a,b);
+  // f⁻¹(x) = (1/a) x + (-b/a). Build the two fraction terms explicitly.
+  var xcoef=fracStr(1,a);
+  var ccoef=fracStr(-b,a);
+  var invStr=(xcoef==="1"?"x":xcoef+"x");
+  if(ccoef!=="0"){
+    if(ccoef.charAt(0)==="-")invStr+=" - "+ccoef.slice(1);
+    else invStr+=" + "+ccoef;
+  }
+  var prob="Find the inverse of  f(x) = "+linStr(f)+".";
+  var solve="set y = "+linStr(f)+", swap x and y, solve for y:  y = "+invStr;
+  return {unit:"2.7 inverses",problem:prob,answer:invStr,
+    accept:[invStr,invStr+" ","("+invStr+")"],
+    hint:"swap x and y, then solve for y",
+    solve:solve};
+};
+
+/* 2.7 — check if a function has an inverse / find f⁻¹(f(x)) */
+GENERATORS["2.7 inverse check"]=function(){
+  var a=nz(-5,5),b=ri(-8,8);
+  var f=lin(a,b);
+  var k=nz(-6,6);
+  var v=linEval(f,k);
+  var prob="If f(x) = "+linStr(f)+", what is f⁻¹("+v+")?";
+  var solve="f("+k+") = "+v+", so f⁻¹("+v+") = "+k;
+  return {unit:"2.7 inverses",problem:prob,answer:String(k),
+    accept:[String(k)],
+    hint:"f⁻¹ undoes f — find the x that maps to "+v,
+    solve:solve};
+};
+
+/* 3.1 — vertex of a parabola: y = ax²+bx+c, find the vertex */
+GENERATORS["3.1 vertex"]=function(){
+  var a=pick([-4,-3,-2,-1,1,2,3,4]);
+  var h=pick([-5,-4,-3,-2,-1,1,2,3,4,5]);
+  var k=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  // y = a(x-h)² + k = a x² - 2 a h x + (a h² + k)
+  var b=-2*a*h, c=a*h*h+k;
+  var prob="Find the vertex of  y = "+quadStr(quad(a,b,c))+".  (Answer as h, k)";
+  var solve="h = -b/(2a) = "+h+", k = f("+h+") = "+k+" → vertex ("+h+", "+k+")";
+  return {unit:"3.1 quadratic functions",problem:prob,answer:h+", "+k,
+    accept:[h+", "+k,"("+h+", "+k+")","("+h+", "+k+")"],
+    hint:"h = -b/(2a), then k = f(h)",
+    solve:solve};
+};
+
+/* 3.1 — max or min value of a quadratic (the vertex y-coordinate) */
+GENERATORS["3.1 max/min"]=function(){
+  var a=pick([-4,-3,-2,-1,1,2,3,4]);
+  var h=pick([-5,-4,-3,-2,-1,1,2,3,4,5]);
+  var k=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var b=-2*a*h, c=a*h*h+k;
+  var kind=a>0?"minimum":"maximum";
+  var prob="What is the "+kind+" value of  y = "+quadStr(quad(a,b,c))+
+    "?  (the "+(a>0?"bottom":"top")+" of the parabola)";
+  var solve="a = "+a+(a>0?" > 0 → opens up → minimum":" < 0 → opens down → maximum")+
+    ". Vertex at x = -b/(2a) = "+h+", and f("+h+") = "+k;
+  return {unit:"3.1 quadratic functions",problem:prob,answer:String(k),
+    accept:[String(k),kind+" = "+k,kind+" "+k,"the "+kind+" is "+k],
+    hint:"the extremum is the y-value at the vertex, x = -b/(2a)",
+    solve:solve};
+};
+
+/* 3.2 — end behavior of a polynomial: leading term determines it */
+GENERATORS["3.2 end behavior"]=function(){
+  // pick a polynomial with known leading term and degree
+  var deg=pick([2,3,4,5]);
+  var lead=pick([-3,-2,-1,1,2,3]);
+  var coeffs=new Array(deg+1).fill(0);
+  coeffs[0]=lead;
+  for(var i=1;i<coeffs.length;i++)coeffs[i]=ri(-4,4);
+  var p=polyStr(coeffs);
+  var even=deg%2===0;
+  var up=lead>0;
+  var ans;
+  if(even&&up)ans="up on both ends";
+  else if(even&&!up)ans="down on both ends";
+  else if(!even&&up)ans="down on the left, up on the right";
+  else ans="up on the left, down on the right";
+  var prob="Describe the end behavior of  f(x) = "+p+".";
+  var solve="leading term is "+lead+"x^"+deg+" (degree "+deg+
+    ", "+(even?"even":"odd")+" degree, "+(up?"positive":"negative")+" leading coefficient) → "+ans;
+  return {unit:"3.2 polynomial graphs",problem:prob,answer:ans,
+    accept:[ans],
+    hint:"look at the degree (even/odd) and the sign of the leading coefficient",
+    solve:solve};
+};
+
+/* 3.2 — number of real roots / turning points bound for a polynomial */
+GENERATORS["3.2 turning points"]=function(){
+  var deg=pick([3,4,5,6]);
+  var coeffs=new Array(deg+1).fill(0);
+  coeffs[0]=pick([-3,-2,-1,1,2,3]);
+  for(var i=1;i<coeffs.length;i++)coeffs[i]=ri(-4,4);
+  var p=polyStr(coeffs);
+  var ans="at most "+(deg-1);
+  var prob="What is the maximum number of turning points of  f(x) = "+p+"?";
+  var solve="a polynomial of degree "+deg+" has at most "+(deg-1)+" turning points";
+  return {unit:"3.2 polynomial graphs",problem:prob,answer:ans,
+    accept:[ans,"at most "+(deg-1),"no more than "+(deg-1),(deg-1)],
+    hint:"max turning points = degree − 1",
+    solve:solve};
+};
+
+/* 3.3 — divide a polynomial by a linear factor using the Remainder Theorem */
+GENERATORS["3.3 remainder theorem"]=function(){
+  // Build p(x) = (x - r) * q(x) + rem where q is linear
+  var r=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var q=lin(nz(-4,4),ri(-6,6));
+  // p(x) = (x-r)(a x + b) + rem = a x² + (b - a r) x + (r*b - r*... ) let's expand:
+  // (x - r)(a x + b) = a x² + b x - a r x - b r = a x² + (b - a r) x - b r
+  var rem=pick([-5,-4,-3,-2,-1,1,2,3,4,5]);
+  var A=q.a, B=q.b + (-q.a*r), C=(-q.b*r)+rem;
+  var p=polyStr([A,B,C]);
+  var prob="Use the Remainder Theorem: what is the remainder when  "+p+"  is divided by  (x - "+r+")?";
+  var solve="remainder = p("+r+") = "+rem;
+  return {unit:"3.3 dividing polynomials",problem:prob,answer:String(rem),
+    accept:[String(rem)],
+    hint:"the remainder when dividing by (x - r) is p(r)",
+    solve:solve};
+};
+
+/* 3.3 — Factor Theorem: does (x - r) divide p(x)? */
+GENERATORS["3.3 factor theorem"]=function(){
+  var r=pick([-6,-5,-4,-3,-2,-1,1,2,3,4,5,6]);
+  var q=lin(nz(-4,4),ri(-6,6));
+  // Case A: p(x) = (x-r) q(x)  → r IS a root
+  // Case B: p(x) = (x-r) q(x) + rem, rem≠0  → r is NOT a root
+  var isRoot=Math.random()<0.5;
+  var rem=isRoot?0:pick([-5,-4,-3,-2,-1,1,2,3,4,5]);
+  var A=q.a, B=q.b+(-q.a*r), C=(-q.b*r)+rem;
+  var p=polyStr([A,B,C]);
+  var ans=isRoot?"yes":"no";
+  var prob="Does  (x - "+r+")  divide  "+p+"  evenly?  (yes or no)";
+  var solve=isRoot
+    ?"p("+r+") = 0, so by the Factor Theorem (x - "+r+") IS a factor → yes"
+    :"p("+r+") = "+rem+" ≠ 0, so (x - "+r+") is NOT a factor → no";
+  return {unit:"3.3 dividing polynomials",problem:prob,answer:ans,
+    accept:[ans,"yes","no","y","n"],
+    hint:"(x - r) divides p(x) iff p(r) = 0",
+    solve:solve};
+};
+
+/* 3.3 — long division: divide a quadratic by a linear factor, give quotient */
+GENERATORS["3.3 long division"]=function(){
+  // p(x) = (x - r)(a x + b) exactly, so quotient is (a x + b), remainder 0
+  var r=pick([-5,-4,-3,-2,-1,1,2,3,4,5]);
+  var a=pick([-4,-3,-2,-1,1,2,3,4]);
+  var b=ri(-6,6);
+  // (x - r)(a x + b) = a x² + (b - a r) x - b r  (middle coefficient: b - a*r)
+  var B=b-a*r, C=-b*r;
+  var p=polyStr([a,B,C]);
+  var qstr=linStr(lin(a,b));
+  var prob="Divide  "+p+"  by  (x - "+r+").  What is the quotient?";
+  var solve=p+" = (x - "+r+")("+qstr+")  → quotient = "+qstr;
+  return {unit:"3.3 dividing polynomials",problem:prob,answer:qstr,
+    accept:[qstr],
+    hint:"set up polynomial long division or factor by grouping",
+    solve:solve};
+};
+
+/* ---------- unit list (order matters for the chips) ---------- */
+var UNITS=[
+  "1.5 quadratics",
+  "1.5 quadratics (ax²)",
+  "1.6 radical equations",
+  "1.6 absolute value",
+  "2.2 evaluate",
+  "2.2 domain",
+  "2.3 slope",
+  "2.3 slope (point-slope)",
+  "2.4 parallel/perp",
+  "2.5 transformations",
+  "2.6 composites",
+  "2.6 composites (expr)",
+  "2.7 inverses",
+  "2.7 inverse check",
+  "3.1 vertex",
+  "3.1 max/min",
+  "3.2 end behavior",
+  "3.2 turning points",
+  "3.3 remainder theorem",
+  "3.3 factor theorem",
+  "3.3 long division"
+];
+
+/* ---------- state ---------- */
+var state={
+  unit:"ALL",
+  streak:0,
+  best:0,
+  correct:0,
+  total:0,
+  current:null,
+  answered:false
+};
+
+/* ---------- DOM ---------- */
+var el={
+  chips:document.getElementById("chips"),
+  unit:document.getElementById("unit"),
+  problem:document.getElementById("problem"),
+  answer:document.getElementById("answer"),
+  check:document.getElementById("check"),
+  skip:document.getElementById("skip"),
+  feedback:document.getElementById("feedback"),
+  hint:document.getElementById("hint"),
+  streakN:document.getElementById("streakN"),
+  bestN:document.getElementById("bestN"),
+  accN:document.getElementById("accN"),
+  card:document.getElementById("card"),
+  foot:document.getElementById("foot")
+};
+
+function save(){
+  try{
+    localStorage.setItem("streak",JSON.stringify({
+      best:state.best,correct:state.correct,total:state.total
+    }));
+  }catch(e){}
+}
+function load(){
+  try{
+    var d=JSON.parse(localStorage.getItem("streak")||"null");
+    if(d){state.best=d.best||0;state.correct=d.correct||0;state.total=d.total||0;}
+  }catch(e){}
+}
+function renderStats(){
+  el.streakN.textContent=state.streak;
+  el.streakN.className="n"+(state.streak>=5?" hot":"");
+  el.bestN.textContent=state.best;
+  el.accN.textContent=state.total?Math.round(100*state.correct/state.total)+"%":"—";
+}
+function renderChips(){
+  el.chips.innerHTML="";
+  var all=document.createElement("button");
+  all.className="chip"+(state.unit==="ALL"?" on":"");
+  all.textContent="all";
+  all.onclick=function(){state.unit="ALL";renderChips();next();};
+  el.chips.appendChild(all);
+  UNITS.forEach(function(u){
+    var b=document.createElement("button");
+    b.className="chip"+(state.unit===u?" on":"");
+    b.textContent=u;
+    b.onclick=function(){state.unit=u;renderChips();next();};
+    el.chips.appendChild(b);
+  });
+}
+function next(){
+  var u=state.unit==="ALL"?pick(UNITS):state.unit;
+  state.current=GENERATORS[u]();
+  state.answered=false;
+  el.unit.textContent=state.current.unit;
+  el.problem.innerHTML=state.current.problem;
+  el.answer.value="";
+  el.answer.className="";
+  el.answer.disabled=false;
+  el.feedback.innerHTML="";
+  el.hint.textContent="";
+  renderStats();
+  el.answer.focus();
+}
+function norm(s){
+  return String(s).trim().replace(/\s+/g," ").toLowerCase();
+}
+function checkAnswer(){
+  if(state.answered)return;
+  var given=el.answer.value;
+  if(given==="")return;
+  state.answered=true;
+  el.answer.disabled=true;
+  var ok=norm(given)===norm(state.current.answer)||
+    state.current.accept.some(function(a){return norm(given)===norm(a);});
+  // numeric tolerance for fraction answers
+  if(!ok){
+    var g=fracToNum(given),c=fracToNum(state.current.answer);
+    if(!isNaN(g)&&!isNaN(c)&&fracEq(g,c))ok=true;
+  }
+  state.total++;
+  if(ok){
+    state.correct++;
+    state.streak++;
+    if(state.streak>state.best)state.best=state.streak;
+    el.answer.className="good";
+    el.feedback.innerHTML='<span class="win">✓ correct — streak '+state.streak+'</span><br>'+
+      '<span class="sol">'+state.current.solve+'</span>';
+  }else{
+    state.streak=0;
+    el.answer.className="bad";
+    el.feedback.innerHTML='<span class="lose">✗ not quite</span><br>'+
+      '<span class="sol">answer: '+state.current.answer+
+      ' &nbsp;·&nbsp; '+state.current.solve+'</span><br>'+
+      '<span class="sol" style="color:var(--amber2)">tip: '+state.current.hint+'</span>';
+  }
+  save();
+  renderStats();
+  el.card.classList.remove("flash");
+  void el.card.offsetWidth;
+  el.card.classList.add("flash");
+  setTimeout(function(){if(state.answered)next();},ok?1400:2600);
+}
+function skip(){
+  el.answer.disabled=true;
+  el.feedback.innerHTML='<span class="sol">skipped — answer was '+
+    state.current.answer+'</span>';
+  state.answered=true;
+  renderStats();
+  setTimeout(next,1600);
+}
+
+el.check.onclick=checkAnswer;
+el.skip.onclick=skip;
+el.answer.addEventListener("keydown",function(e){
+  if(e.key==="Enter")checkAnswer();
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="s"||e.key==="S"){if(!state.answered)skip();}
+});
+
+/* ---------- boot ---------- */
+load();
+renderChips();
+renderStats();
+next();
+el.foot.textContent=UNITS.length+" generators";
+
+/* expose for a Node harness (harmless in the browser) */
+if(typeof module!=="undefined"&&module.exports){
+  module.exports={GENERATORS:GENERATORS,UNITS:UNITS,fracStr:fracStr,
+    fracToNum:fracToNum,linStr:linStr,quadStr:quadStr,polyStr:polyStr,
+    linEval:linEval,polyEval:polyEval,gcd:gcd};
+}
+</script>
+</body>
+</html>

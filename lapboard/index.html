@@ -1,0 +1,284 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>lapboard</title>
+<style>
+  :root{
+    --bg:#0b0a08; --ink:#f5efe2; --amber:#ffb454; --amber-dim:#8a6a3a;
+    --green:#7ce38b; --red:#ff5c47; --line:#241f16;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:"Avenir Next","Segoe UI",system-ui,sans-serif;
+    display:flex; flex-direction:column;
+    overflow:hidden; user-select:none;
+  }
+  /* faint diagonal grain, tribal */
+  body::before{
+    content:""; position:fixed; inset:0; pointer-events:none; opacity:.5;
+    background:repeating-linear-gradient(115deg,transparent 0 26px,rgba(255,180,84,.028) 26px 27px);
+  }
+  header{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:2vh 3vw 1vh; letter-spacing:.35em; font-size:1.05rem;
+    color:var(--amber-dim); text-transform:uppercase;
+  }
+  header b{color:var(--amber); font-weight:600}
+  .live-lamp{
+    display:inline-block; width:.55em; height:.55em; margin-right:.7em;
+    background:#3a2c17; transform:rotate(45deg);
+  }
+  .live-lamp.on{background:var(--red); box-shadow:0 0 14px var(--red); animation:blink 1s steps(2) infinite}
+  @keyframes blink{50%{opacity:.25}}
+  main{flex:1; display:flex; flex-direction:column; justify-content:center; gap:3vh; padding:0 3vw}
+  .row{display:flex; align-items:baseline; gap:4vw}
+  .label{
+    font-size:1.1rem; letter-spacing:.4em; color:var(--amber-dim);
+    text-transform:uppercase; min-width:11ch;
+  }
+  .num{
+    font-style:italic; font-weight:800; line-height:.9;
+    font-variant-numeric:tabular-nums; letter-spacing:-.02em;
+  }
+  .big{font-size:19vh}
+  .mid{font-size:9.5vh}
+  #delta{font-size:11vh; font-weight:700}
+  .sub{font-size:3.2vh; color:#6d6350; letter-spacing:.15em}
+  #best .num{color:var(--ink)}
+  #last .num{color:var(--amber)}
+  .ahead{color:var(--green)!important}
+  .behind{color:var(--red)!important}
+  .flat{color:var(--amber)!important}
+  .sectors{display:flex; gap:4vw; align-items:baseline; padding-left:11ch}
+  .srow{display:flex; align-items:baseline; gap:1.2vw}
+  .slab{font-size:1.6vh; letter-spacing:.3em; color:var(--amber-dim); text-transform:uppercase}
+  .sval{font-size:4.6vh; font-style:italic; font-weight:700; font-variant-numeric:tabular-nums; min-width:8ch}
+  .deltalabel{font-size:3vh; letter-spacing:.3em; color:var(--amber-dim); text-transform:uppercase; margin-top:1.2vh}
+  #strip{
+    width:100%; height:16vh; display:block;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  footer{
+    padding:1.6vh 3vw 2vh; font-size:1.5vh; letter-spacing:.25em;
+    color:#4c4433; text-transform:uppercase; display:flex; justify-content:space-between;
+  }
+  kbd{color:var(--amber-dim); border:1px solid var(--line); padding:0 .5em; margin:0 .2em}
+</style>
+</head>
+<body>
+<header>
+  <span><span class="live-lamp" id="lamp"></span><b>lapboard</b></span>
+  <span id="lapcount">no laps</span>
+</header>
+<main>
+  <div class="row">
+    <div class="label">live</div>
+    <div class="num big" id="live">0:00.000</div>
+    <div style="flex:1"></div>
+    <div style="text-align:right">
+      <div class="deltalabel" id="deltaword">vs best</div>
+      <div class="num" id="delta">—</div>
+    </div>
+  </div>
+  <div class="row">
+    <div id="best" style="display:flex;align-items:baseline;gap:2vw">
+      <div class="label">best</div>
+      <div class="num mid" id="bestt">—</div>
+    </div>
+    <div id="last" style="display:flex;align-items:baseline;gap:2vw">
+      <div class="label">last</div>
+      <div class="num mid" id="lastt">—</div>
+    </div>
+  </div>
+  <div class="sectors" id="sectors"></div>
+  <canvas id="strip"></canvas>
+</main>
+<footer>
+  <span><kbd>space</kbd> start / finish lap &nbsp; <kbd>b</kbd> reset best &nbsp; <kbd>r</kbd> reset all</span>
+  <span id="state">idle</span>
+</footer>
+<script>
+"use strict";
+const $=id=>document.getElementById(id);
+const TAU=Math.PI*2;
+const fmt=t=>{
+  if(t==null||!isFinite(t))return"—";
+  const m=Math.floor(t/60), s=t-m*60;
+  const ss=s<10?"0"+s.toFixed(3):s.toFixed(3);
+  return m+":"+ss;
+};
+const fmtD=d=>{
+  if(d==null||!isFinite(d))return"—";
+  const a=Math.abs(d), sign=d<0?"-":"+"+(Math.abs(d)<0.0005?"0":"");
+  const m=Math.floor(a/60), s=a-m*60;
+  const ss=s<10?"0"+s.toFixed(3):s.toFixed(3);
+  return (d<0?"-":(d>0.0005?"+":""))+m+":"+ss;
+};
+// d[] = cumulative time at equally-spaced track positions (d[0]=0, d[-1]=lap
+// total). atp(d,p) = interpolated time at position p in [0,1].
+function atp(d,p){
+  if(!d||d.length<2)return null;
+  if(p<=0)return d[0];
+  if(p>=1)return d[d.length-1];
+  const x=p*(d.length-1);
+  const i=Math.floor(x), f=x-i;
+  return d[i]+(d[i+1]-d[i])*f;
+}
+let LAPS=[], LIVE=null, BEST=null, LAST=null, SECTORS=[];
+// SECTORS are track-position fractions (0..1). A lap's sector time is the
+// difference of its cumulative curve at the two sector positions.
+function sectorTimes(lap){
+  const bounds=[0,...SECTORS,1];
+  const out=[];
+  for(let i=0;i<bounds.length-1;i++){
+    const va=atp(lap.d,bounds[i]), vb=atp(lap.d,bounds[i+1]);
+    out.push(Math.max(0,vb-va));
+  }
+  return out;
+}
+// one tick per render frame: refresh laps/sectors, and while a lap is live,
+// advance its position (server-side) so the delta tracks track position.
+async function tick(){
+  try{
+    const r=await fetch("/laps",{cache:"no-store"});
+    const j=await r.json();
+    LAPS=j.laps||[]; LIVE=j.live||null;
+    SECTORS=j.sectors||[];
+    if(LAPS.length){
+      LAST=LAPS[LAPS.length-1];
+      BEST=LAPS.reduce((a,b)=>b.t<a.t?b:a);
+    } else { LAST=null; BEST=null; }
+    if(LIVE){
+      const p=await fetch("/live/pos",{method:"POST",cache:"no-store"});
+      const k=await p.json();
+      LIVE=k.live||LIVE;
+    }
+  }catch(e){}
+  render();
+}
+const cv=$("strip"), cx=cv.getContext("2d");
+function sizeStrip(){
+  const dpr=window.devicePixelRatio||1;
+  cv.width=cv.clientWidth*dpr; cv.height=cv.clientHeight*dpr;
+  cx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",sizeStrip);
+function render(){
+  $("lapcount").textContent=LAPS.length?("lap "+LAPS.length):"no laps";
+  $("bestt").textContent=BEST?fmt(BEST.t):"—";
+  $("lastt").textContent=LAST?fmt(LAST.t):"—";
+  $("lamp").classList.toggle("on",!!LIVE);
+  $("state").textContent=LIVE?"recording":"idle";
+  const t=LIVE?LIVE.elapsed:0, p=LIVE?LIVE.pos:0;
+  $("live").textContent=LIVE?fmt(t):"0:00.000";
+  const de=$("delta"), dw=$("deltaword");
+  if(LIVE&&BEST){
+    const bt=atp(BEST.d,p);
+    const d=t-bt;
+    de.textContent=fmtD(d);
+    de.className="num "+(d<-0.0005?"ahead":d>0.0005?"behind":"flat");
+    dw.textContent="vs best";
+  } else if(LAST&&BEST){
+    const d=LAST.t-BEST.t;
+    de.textContent=fmtD(d);
+    de.className="num "+(d<-0.0005?"ahead":d>0.0005?"behind":"flat");
+    dw.textContent="last vs best";
+  } else {
+    de.textContent="—"; de.className="num"; dw.textContent="vs best";
+  }
+  renderSectors(p);
+  drawStrip(p);
+}
+function renderSectors(p){
+  const box=$("sectors");
+  if(!BEST||!SECTORS.length){ box.innerHTML=""; return; }
+  const bestT=sectorTimes(BEST);
+  // live: current sector = the one whose position range contains p
+  let cur=null, label="";
+  if(LIVE){
+    let idx=0;
+    while(idx<SECTORS.length&&p>SECTORS[idx])idx++;
+    const a=idx===0?0:SECTORS[idx-1];
+    const va=atp(BEST.d,a), vt=atp(BEST.d,p);
+    cur=[Math.max(0,vt-va)];
+    label="live s"+(idx+1);
+  } else if(LAST){
+    cur=sectorTimes(LAST);
+    label="last";
+  }
+  let html="";
+  const n=Math.max(cur?cur.length:0,bestT.length);
+  for(let i=0;i<n;i++){
+    const d=cur&&cur[i]!=null&&bestT[i]!=null?cur[i]-bestT[i]:null;
+    const cls=d==null?"":d<-0.0005?"ahead":d>0.0005?"behind":"flat";
+    html+='<div class="srow"><span class="slab">'+(label?label+" ":"s"+(i+1))+'</span>'
+      +'<span class="sval '+cls+'">'+(d==null?"—":fmtD(d))+'</span></div>';
+  }
+  box.innerHTML=html;
+}
+function drawStrip(p){
+  const W=cv.clientWidth,H=cv.clientHeight;
+  cx.clearRect(0,0,W,H);
+  if(!BEST){
+    cx.fillStyle="#2a2418"; cx.font="italic 600 18px system-ui";
+    cx.textAlign="center"; cx.textBaseline="middle";
+    cx.fillText("no best lap yet — press space",W/2,H/2);
+    return;
+  }
+  const T=BEST.t;
+  const x=pos=>pos*W, y=v=>H-(v/T)*(H-10)-5;
+  // best curve (amber, thin): x = track position, y = cumulative time
+  cx.strokeStyle="rgba(255,180,84,.55)"; cx.lineWidth=1.5;
+  cx.beginPath();
+  BEST.d.forEach((v,i)=>{const px=x(i/(BEST.d.length-1)),py=y(v); i?cx.lineTo(px,py):cx.moveTo(px,py);});
+  cx.stroke();
+  // live or last curve
+  let cur=null, curP=0;
+  if(LIVE){ cur=null; curP=p; }
+  else if(LAST){ cur=LAST; curP=1; }
+  if(cur!==null||LIVE){
+    const d=(LIVE?LIVE.elapsed:LAST.t)-(atp(BEST.d,curP)||0);
+    cx.strokeStyle=d<-0.0005?"#7ce38b":d>0.0005?"#ff5c47":"#ffb454";
+    cx.lineWidth=2.5;
+    cx.beginPath();
+    const N=160;
+    for(let i=0;i<=N;i++){
+      const pos=curP*i/N;
+      const v=LIVE?Math.min(LIVE.elapsed,T):Math.min(atp(cur.d,pos),T);
+      const px=x(pos), py=y(v);
+      i?cx.lineTo(px,py):cx.moveTo(px,py);
+    }
+    cx.stroke();
+    // ghost dot (best) + self dot
+    cx.fillStyle="rgba(255,180,84,.8)";
+    cx.beginPath(); cx.arc(x(curP),y(atp(BEST.d,curP)),4,0,TAU); cx.fill();
+    const sv=LIVE?Math.min(LIVE.elapsed,T):atp(cur.d,curP);
+    cx.fillStyle=d<-0.0005?"#7ce38b":d>0.0005?"#ff5c47":"#ffb454";
+    cx.beginPath(); cx.arc(x(curP),y(Math.min(sv,T)),6,0,TAU); cx.fill();
+  }
+  // tick marks every 20s (time axis, bottom)
+  cx.fillStyle="#3a3223";
+  for(let s=20;s<T;s+=20){
+    cx.fillRect(x(s/T),H-6,1,6);
+  }
+  // sector boundaries (taller, amber-dim) at track positions from track.json
+  if(SECTORS.length){
+    cx.fillStyle="rgba(255,180,84,.4)";
+    SECTORS.forEach(s=>{ if(s<1) cx.fillRect(x(s),H-14,1,14); });
+  }
+}
+async function post(p){ try{ await fetch(p,{method:"POST"}); }catch(e){} }
+window.addEventListener("keydown",e=>{
+  if(e.code==="Space"){ e.preventDefault(); LIVE?post("/lap/finish"):post("/lap/start"); }
+  if(e.key==="b"||e.key==="B"){ if(LAPS.length) post("/lap/reset-best"); }
+  if(e.key==="r"||e.key==="R"){ post("/lap/reset"); }
+});
+setInterval(tick,150);
+sizeStrip(); tick();
+</script>
+</body>
+</html>

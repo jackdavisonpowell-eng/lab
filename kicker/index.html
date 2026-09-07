@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KICKER — anime quote machine</title>
+<style>
+  :root {
+    --bg: #0b0b0b;
+    --amber: #ffb000;
+    --white: #f2f2f2;
+    --muted: #6b6b6b;
+    --line: #2a2a2a;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    background: var(--bg);
+    color: var(--white);
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 24px 16px 48px;
+  }
+  header {
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+  .wordmark {
+    font-size: 20px;
+    letter-spacing: 0.35em;
+    color: var(--amber);
+    font-weight: 700;
+  }
+  .wordmark small { color: var(--muted); letter-spacing: 0.1em; font-size: 11px; font-weight: 400; }
+  .count { font-size: 13px; color: var(--muted); letter-spacing: 0.15em; }
+  .count b { color: var(--amber); font-size: 28px; font-style: italic; }
+  main { width: 100%; max-width: 720px; display: flex; flex-direction: column; gap: 16px; }
+  .cardwrap {
+    width: 100%;
+    aspect-ratio: 1 / 1;
+    background: #000;
+    border: 1px solid var(--line);
+    clip-path: polygon(0 28px, 28px 0, 100% 0, 100% calc(100% - 28px), calc(100% - 28px) 100%, 0 100%);
+  }
+  .cardwrap svg { width: 100%; height: 100%; display: block; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    padding: 8px 14px;
+    cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+  }
+  .chip:hover { color: var(--white); border-color: var(--muted); }
+  .chip.on { color: var(--bg); background: var(--amber); border-color: var(--amber); font-weight: 700; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn {
+    background: none;
+    border: 1px solid var(--amber);
+    color: var(--amber);
+    font-family: inherit;
+    font-size: 13px;
+    letter-spacing: 0.25em;
+    padding: 12px 22px;
+    cursor: pointer;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .btn:hover { background: var(--amber); color: var(--bg); font-weight: 700; }
+  .btn.ghost { border-color: var(--line); color: var(--muted); }
+  .btn.ghost:hover { background: var(--white); border-color: var(--white); color: var(--bg); }
+  .hint { font-size: 11px; color: var(--muted); letter-spacing: 0.15em; line-height: 1.8; }
+  .flash { color: var(--amber); }
+  #status { min-height: 16px; font-size: 11px; letter-spacing: 0.2em; color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wordmark">KICKER <small>ANIME QUOTE MACHINE</small></div>
+  <div class="count"><b id="idx">--</b> / <span id="total">--</span></div>
+</header>
+<main>
+  <div class="cardwrap" id="card"></div>
+  <div class="chips" id="chips"></div>
+  <div class="actions">
+    <button class="btn" id="next">NEXT &raquo;</button>
+    <button class="btn ghost" id="copy">COPY</button>
+    <button class="btn ghost" id="save">SAVE CARD (SVG)</button>
+  </div>
+  <div id="status"></div>
+  <div class="hint">SPACE = next quote &middot; 1&ndash;5 = style filter &middot; C = copy &middot; S = save card<br>
+  50 original quotes, five styles, zero copyright. The card is a self-contained SVG — open it anywhere.</div>
+</main>
+<script>
+"use strict";
+var QUOTES = [];
+var STYLES = [];
+var STYLE_COLORS = {
+  TITAN: "#ffb000",
+  BEND: "#7fd4a0",
+  PORTAL: "#8ab8ff",
+  DUNE: "#e8c07a",
+  NEON: "#ff7ab8"
+};
+var current = -1;
+var filter = null;
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
+/* Wrap text into lines of at most maxChars characters (word-boundary). */
+function wrapText(text, maxChars) {
+  var words = String(text).split(/\s+/);
+  var lines = [];
+  var line = "";
+  for (var i = 0; i < words.length; i++) {
+    var w = words[i];
+    if (line && (line + " " + w).length > maxChars) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = line ? line + " " + w : w;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+/* The share-card renderer: one function, two outputs (screen + file).
+   Returns a self-contained 1080x1080 SVG string. */
+function renderCard(q, idx, total) {
+  var accent = STYLE_COLORS[q.style] || "#ffb000";
+  var lines = wrapText(q.text, 34);
+  var fs = 54;
+  var maxH = 470;
+  while (lines.length * (fs * 1.45) > maxH && fs > 30) fs -= 2;
+  var lineH = fs * 1.45;
+  var blockH = lines.length * lineH;
+  var y0 = 600 - blockH / 2 + fs * 0.35;
+
+  var tspans = "";
+  for (var i = 0; i < lines.length; i++) {
+    tspans += '<tspan x="540" y="' + (y0 + i * lineH).toFixed(1) + '">' + esc(lines[i]) + "</tspan>";
+  }
+
+  var num = String(idx).replace(/\D/g, "");
+  var pad = num.length < 2 ? "0" + num : num;
+
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1080" viewBox="0 0 1080 1080">' +
+    '<rect width="1080" height="1080" fill="#0b0b0b"/>' +
+    /* corner notches */
+    '<path d="M0 64 L64 0 L1080 0 L1080 1016 L1016 1080 L0 1080 Z" fill="none" stroke="' + accent + '" stroke-width="3"/>' +
+    '<path d="M0 96 L96 0 L1080 0" fill="none" stroke="#2a2a2a" stroke-width="1"/>' +
+    '<path d="M1080 984 L984 1080 L0 1080" fill="none" stroke="#2a2a2a" stroke-width="1"/>' +
+    /* tribal chevrons, top-left */
+    '<path d="M64 150 L104 110 L144 150" fill="none" stroke="' + accent + '" stroke-width="4"/>' +
+    '<path d="M64 190 L104 150 L144 190" fill="none" stroke="' + accent + '" stroke-width="4" opacity="0.55"/>' +
+    '<path d="M64 230 L104 190 L144 230" fill="none" stroke="' + accent + '" stroke-width="4" opacity="0.3"/>' +
+    /* wordmark */
+    '<text x="90" y="120" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="30" letter-spacing="14" fill="#f2f2f2">KICKER</text>' +
+    '<text x="90" y="152" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" letter-spacing="6" fill="#6b6b6b">ANIME QUOTE MACHINE</text>' +
+    /* style tag, top-right */
+    '<text x="1016" y="120" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="26" letter-spacing="8" fill="' + accent + '">' + esc(q.style) + "</text>" +
+    /* the quote */
+    '<text text-anchor="middle" font-family="Georgia, \'Times New Roman\', serif" font-style="italic" font-size="' + fs + '" fill="#f2f2f2">' + tspans + "</text>" +
+    /* divider */
+    '<line x1="440" y1="850" x2="640" y2="850" stroke="#2a2a2a" stroke-width="2"/>' +
+    '<path d="M540 838 L552 850 L540 862 L528 850 Z" fill="' + accent + '"/>' +
+    /* big number */
+    '<text x="470" y="985" text-anchor="end" font-family="Georgia, \'Times New Roman\', serif" font-style="italic" font-size="110" fill="' + accent + '">' + pad + "</text>" +
+    '<text x="500" y="985" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="30" letter-spacing="4" fill="#6b6b6b">/ ' + total + "</text>" +
+    '<text x="990" y="985" text-anchor="end" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="15" letter-spacing="5" fill="#6b6b6b">ORIGINAL &#183; UNOWNED</text>' +
+    "</svg>";
+  return svg;
+}
+
+function pad2(n) { return String(n).length < 2 ? "0" + n : String(n); }
+
+function pool() {
+  if (!filter) return QUOTES;
+  return QUOTES.filter(function (q) { return q.style === filter; });
+}
+
+function show(i) {
+  var p = pool();
+  if (!p.length) return;
+  current = ((i % p.length) + p.length) % p.length;
+  var q = p[current];
+  var gi = QUOTES.indexOf(q);
+  document.getElementById("card").innerHTML = renderCard(q, gi + 1, QUOTES.length);
+  document.getElementById("idx").textContent = pad2(gi + 1);
+  flash();
+}
+
+function next() {
+  var p = pool();
+  var i;
+  do { i = Math.floor(Math.random() * p.length); }
+  while (p.length > 1 && i === current);
+  show(i);
+}
+
+function flash() {
+  var s = document.getElementById("status");
+  s.textContent = "";
+  setTimeout(function () { s.textContent = "READY"; }, 0);
+}
+
+function setFilter(style) {
+  filter = (filter === style) ? null : style;
+  var chips = document.querySelectorAll(".chip");
+  for (var i = 0; i < chips.length; i++) {
+    var ds = chips[i].getAttribute("data-style");
+    var active = filter ? ds === filter : ds === "";
+    chips[i].className = "chip" + (active ? " on" : "");
+  }
+  show(0);
+}
+
+function copyQuote() {
+  var p = pool();
+  var q = p[current];
+  if (!q) return;
+  var text = "\u201C" + q.text + "\u201D  \u2014 KICKER [" + q.style + "]";
+  function done() {
+    var s = document.getElementById("status");
+    s.textContent = "COPIED";
+    setTimeout(function () { s.textContent = "READY"; }, 1200);
+  }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+  } else {
+    fallbackCopy(text); done();
+  }
+}
+
+function fallbackCopy(text) {
+  var ta = document.createElement("textarea");
+  ta.value = text;
+  ta.style.position = "fixed";
+  ta.style.opacity = "0";
+  document.body.appendChild(ta);
+  ta.select();
+  try { document.execCommand("copy"); } catch (e) {}
+  document.body.removeChild(ta);
+}
+
+function saveCard() {
+  var p = pool();
+  var q = p[current];
+  if (!q) return;
+  var gi = QUOTES.indexOf(q);
+  var svg = renderCard(q, gi + 1, QUOTES.length);
+  var blob = new Blob([svg], { type: "image/svg+xml" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "kicker-" + pad2(gi + 1) + "-" + q.style.toLowerCase() + ".svg";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  var s = document.getElementById("status");
+  s.textContent = "CARD SAVED";
+  setTimeout(function () { s.textContent = "READY"; }, 1200);
+}
+
+function buildChips() {
+  var host = document.getElementById("chips");
+  var all = document.createElement("button");
+  all.className = "chip on";
+  all.textContent = "ALL";
+  all.setAttribute("data-style", "");
+  all.onclick = function () { setFilter(null); };
+  host.appendChild(all);
+  for (var i = 0; i < STYLES.length; i++) {
+    (function (st, n) {
+      var b = document.createElement("button");
+      b.className = "chip";
+      b.textContent = st + " " + (n + 1);
+      b.setAttribute("data-style", st);
+      b.onclick = function () { setFilter(st); };
+      host.appendChild(b);
+    })(STYLES[i], i);
+  }
+}
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === " " || e.key === "Enter") { e.preventDefault(); next(); }
+  else if (e.key === "c" || e.key === "C") copyQuote();
+  else if (e.key === "s" || e.key === "S") saveCard();
+  else if (e.key >= "1" && e.key <= "5") {
+    var i = parseInt(e.key, 10) - 1;
+    if (STYLES[i]) setFilter(STYLES[i]);
+  }
+});
+
+function init() {
+  fetch("quotes.json")
+    .then(function (r) {
+      if (!r.ok) throw new Error("http " + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      QUOTES = data.quotes;
+      STYLES = data.styles;
+      document.getElementById("total").textContent = QUOTES.length;
+      buildChips();
+      show(0);
+    })
+    .catch(function (err) {
+      document.getElementById("card").innerHTML =
+        '<div style="padding:40px;color:#6b6b6b;font-size:13px;letter-spacing:.15em">' +
+        "FAILED TO LOAD quotes.json (" + esc(err.message) + ").<br>Run via <span style='color:#ffb000'>run.sh</span> (python http.server) so the JSON is served.</div>";
+    });
+}
+
+document.getElementById("next").onclick = next;
+document.getElementById("copy").onclick = copyQuote;
+document.getElementById("save").onclick = saveCard;
+init();
+</script>
+</body>
+</html>

@@ -1,0 +1,297 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cluster // gr86</title>
+<style>
+  :root{
+    --bg:#0b0a08; --ink:#f2f0ea; --amber:#ffb454; --amber-dim:#8a5a22;
+    --red:#ff4b2e; --line:#2a2620;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",system-ui,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;user-select:none}
+  body::after{content:"";position:fixed;inset:0;pointer-events:none;
+    background:radial-gradient(120% 90% at 50% 45%, transparent 55%, rgba(0,0,0,.55) 100%)}
+  #wrap{position:fixed;inset:0}
+  canvas{position:absolute;inset:0;width:100%;height:100%}
+
+  .hud{position:absolute;z-index:5;font-style:italic;font-weight:800}
+  #brand{top:22px;left:28px;font-size:15px;letter-spacing:.35em;color:var(--amber)}
+  #brand small{display:block;font-size:10px;letter-spacing:.3em;color:#6d675c;font-weight:600;margin-top:4px}
+  #topright{top:22px;right:28px;text-align:right;font-size:13px;letter-spacing:.25em;color:#8d867a}
+  #lap{font-size:26px;color:var(--ink);letter-spacing:.12em;margin-top:6px;font-variant-numeric:tabular-nums}
+  #mode{margin-top:14px;font-size:12px;letter-spacing:.3em;color:var(--amber);
+    border:1px solid var(--amber-dim);padding:6px 14px;cursor:pointer;display:inline-block}
+  #mode:hover{background:rgba(255,180,84,.08)}
+
+  #gearbox{right:6vw;top:50%;transform:translateY(-58%);text-align:right}
+  #gearlbl{font-size:12px;letter-spacing:.4em;color:#6d675c;font-weight:600}
+  #gear{font-size:220px;line-height:.9;color:var(--ink);text-shadow:0 0 26px rgba(255,180,84,.25)}
+  #flash{font-size:14px;letter-spacing:.3em;color:var(--red);height:18px;margin-top:10px;opacity:0}
+
+  #speedbox{left:50%;bottom:9vh;transform:translateX(-50%);text-align:center}
+  #speed{font-size:96px;line-height:.9;color:var(--ink);font-variant-numeric:tabular-nums;
+    text-shadow:0 0 22px rgba(255,180,84,.2)}
+  #speedlbl{font-size:12px;letter-spacing:.5em;color:#6d675c;font-weight:600;margin-top:6px}
+
+  #bars{left:28px;bottom:28px;width:210px;font-size:10px;letter-spacing:.25em;color:#6d675c;font-weight:600}
+  .barrow{display:flex;align-items:center;gap:10px;margin-top:10px}
+  .barlbl{width:52px;text-align:right}
+  .bar{flex:1;height:5px;background:var(--line);position:relative}
+  .bar i{position:absolute;inset:0;right:auto;background:var(--amber);display:block}
+  #fuelbar i{background:var(--ink)}
+
+  #eculine{left:50%;bottom:26px;transform:translateX(-50%);font-size:13px;letter-spacing:.3em;
+    color:var(--amber);font-weight:600;white-space:nowrap}
+  #hint{left:28px;top:22px;font-size:10px;letter-spacing:.2em;color:#57524a;font-weight:600}
+  .diamond{color:var(--amber-dim)}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="cv"></canvas>
+  <div class="hud" id="brand">GR86 <span class="diamond">&#9670;</span> CLUSTER<small>FA20 &mdash; FAKE TELEMETRY</small></div>
+  <div class="hud" id="hint">HOLD [SPACE] REV &nbsp; [1-6] SHIFT &nbsp; [M] MODE</div>
+  <div class="hud" id="topright">LAP TIME<div id="lap">0:00.0</div><div id="mode">DEMO</div></div>
+  <div class="hud" id="gearbox"><div id="gearlbl">GEAR</div><div id="gear">N</div><div id="flash">REV MATCH</div></div>
+  <div class="hud" id="speedbox"><div id="speed">0</div><div id="speedlbl">KM/H</div></div>
+  <div class="hud" id="bars">
+    <div class="barrow"><span class="barlbl">COOL</span><span class="bar" id="coolbar"><i></i></span></div>
+    <div class="barrow"><span class="barlbl">FUEL</span><span class="bar" id="fuelbar"><i></i></span></div>
+  </div>
+  <div class="hud" id="eculine">BOOT</div>
+</div>
+<script>
+"use strict";
+(function(){
+var TAU=Math.PI*2;
+var SCALE=8000, REDLINE=7300, IDLE=950;
+var RATIO=[0,3.42,2.25,1.60,1.22,0.97,0.80];           // gear 1..6
+var K2=200/(7000/0.80);                                 // km/h: 6th @7000 = 200
+var state={mode:"demo",rpm:0,disp:0,gear:0,throttle:0,speed:0,
+           t:0,phase:0,phaseT:0,lapT:0,coolant:68,fuel:0.86,msg:"BOOT",
+           flashT:0,_blipped:false};
+window.__state=state;
+
+var PHASES=[
+ {name:"IDLE",  dur:2.6, thr:0,    msg:"DEMO // IDLE — 950 RPM"},
+ {name:"LAUNCH",dur:0,   thr:1,    until:"gear5", msg:"DEMO // LAUNCH — 100% THROTTLE"},
+ {name:"CRUISE",dur:3.2, thr:0.45, msg:"DEMO // CRUISE — 5TH"},
+ {name:"PUNCH", dur:0,   thr:1,    until:"gear6", msg:"DEMO // PUNCH — 6TH TO REDLINE"},
+ {name:"BRAKE", dur:3.4, thr:0,    blipAt:1.6,    msg:"DEMO // BRAKE — FLAT SHIFT 6→4"},
+ {name:"COAST", dur:2.2, thr:0.15, msg:"DEMO // COAST"}
+];
+var SHIFT_AT={LAUNCH:7000,PUNCH:7050};
+
+function enterPhase(){
+  var p=PHASES[state.phase]; state._blipped=false;
+  switch(p.name){
+    case "IDLE":   state.gear=0; state.rpm=IDLE; state.lapT=0; break;
+    case "LAUNCH": state.gear=1; state.rpm=2200; break;
+    case "CRUISE": state.gear=5; state.rpm=3200; break;
+    case "PUNCH":  state.gear=5; state.rpm=3000; break;
+    case "BRAKE":  state.gear=6; state.rpm=4300; break;
+    case "COAST":  state.gear=4; state.rpm=3000; break;
+  }
+}
+function nextPhase(){ state.phase=(state.phase+1)%PHASES.length; state.phaseT=0; enterPhase(); }
+
+function demo(dt){
+  var p=PHASES[state.phase];
+  state.phaseT+=dt;
+  if(p.until){
+    if(p.until==="gear5"&&state.gear>=5) nextPhase();
+    else if(p.until==="gear6"&&state.gear>=6) nextPhase();
+  } else if(state.phaseT>=p.dur){ nextPhase(); return; }
+  p=PHASES[state.phase];
+  state.throttle=p.thr;
+  var target=p.name==="IDLE"?IDLE:(p.name==="CRUISE"?3600:p.name==="COAST"?2900:p.name==="BRAKE"?2600:7050);
+  if(state.gear>0&&p.thr>0.6&&state.gear<6){
+    var lim=SHIFT_AT[p.name]||7050;
+    if(state.rpm>=lim){ state.gear++; state.rpm=5200+Math.random()*500; }
+  }
+  if(p.name==="BRAKE"&&p.blipAt&&state.phaseT>=p.blipAt&&!state._blipped){
+    state._blipped=true; state.gear=4; state.rpm=4800; state.flashT=0.6;
+  }
+  var rate=p.thr>0.6?2.4:(p.name==="BRAKE"?1.1:1.6);
+  state.rpm+=(target-state.rpm)*Math.min(1,dt*rate);
+  state.msg=p.msg+(state.gear>0?" — GEAR "+state.gear:"");
+}
+
+var keys={};
+function shiftTo(g){
+  if(g===state.gear||g<1||g>6) return;
+  if(g>state.gear){ state.gear=g; state.rpm=Math.max(IDLE,state.rpm-1800); }
+  else { state.gear=g; state.rpm=Math.min(7250,state.rpm+1400); state.flashT=0.6; }
+}
+function manual(dt){
+  state.throttle=keys.thr?1:0;
+  if(state.gear===0){
+    if(keys.thr) state.rpm+=dt*5200; else state.rpm-=dt*4000;
+  } else {
+    if(keys.thr){ state.rpm+=dt*(900+(6-state.gear)*260); }
+    else { state.rpm-=dt*(keys.brk?3200:1500); }
+  }
+  if(state.rpm>REDLINE) state.rpm-=(state.rpm-REDLINE)*Math.min(1,dt*10);
+  state.rpm=Math.max(state.gear===0?700:IDLE,Math.min(7400,state.rpm));
+  state.msg="MANUAL // "+(keys.thr?"REV —":"")+(keys.brk?"BRAKE":"")+(state.gear===0?"NEUTRAL":"GEAR "+state.gear);
+}
+
+function step(dt){
+  if(state.mode==="demo") demo(dt); else manual(dt);
+  state.disp+=(state.rpm-state.disp)*Math.min(1,dt*12);
+  if(state.gear>0) state.speed=state.rpm/RATIO[state.gear]*K2;
+  else state.speed-=state.speed*Math.min(1,dt*0.8);
+  var ct=68+state.throttle*24;
+  state.coolant+=(ct-state.coolant)*dt*0.15;
+  state.fuel=Math.max(0.05,Math.min(0.95,state.fuel-dt*0.0006*(0.5+state.throttle)));
+  state.lapT+=dt;
+  state.flashT=Math.max(0,state.flashT-dt);
+}
+
+/* ---------- canvas ---------- */
+var cv=document.getElementById("cv"),ctx=cv.getContext("2d"),W=0,H=0;
+function resize(){
+  var dpr=window.devicePixelRatio||1;
+  W=window.innerWidth;H=window.innerHeight;
+  cv.width=W*dpr;cv.height=H*dpr;
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+window.addEventListener("resize",resize);
+
+function ang(rpm){ return (225+rpm/SCALE*270)*Math.PI/180; } // clockwise from 12 o'clock
+function pt(cx,cy,r,a){ return [cx+r*Math.sin(a),cy-r*Math.cos(a)]; }
+
+function lampOn(rpm,t){
+  if(rpm<5800) return 0;
+  var f=rpm<6500?0.8:(rpm<7000?2.2:5.5);
+  return Math.sin(t*f*TAU)>0?1:0.04;
+}
+
+function render(t){
+  ctx.clearRect(0,0,W,H);
+  var cx=W*0.36,cy=H*0.50,r=Math.min(W*0.34,H*0.40);
+  // tick ring
+  for(var v=0;v<=SCALE;v+=250){
+    var a=ang(v),major=v%500===0;
+    var p1=pt(cx,cy,r,a),p2=pt(cx,cy,r-(major?22:11),a);
+    ctx.strokeStyle=v>=REDLINE?"#ff4b2e":(major?"#f2f0ea":"#4a453c");
+    ctx.lineWidth=major?2.5:1;
+    ctx.beginPath();ctx.moveTo(p1[0],p1[1]);ctx.lineTo(p2[0],p2[1]);ctx.stroke();
+  }
+  // labels
+  ctx.fillStyle="#f2f0ea";ctx.font="italic 700 "+Math.round(r*0.11)+"px 'Segoe UI',sans-serif";
+  ctx.textAlign="center";ctx.textBaseline="middle";
+  for(var n=1;n<=8;n++){
+    var la=ang(n*1000),lp=pt(cx,cy,r*0.76,la);
+    ctx.fillStyle=n*1000>=REDLINE?"#ff4b2e":"#f2f0ea";
+    ctx.fillText(String(n),lp[0],lp[1]);
+  }
+  // redline arc
+  ctx.strokeStyle="#ff4b2e";ctx.lineWidth=7;
+  ctx.shadowColor="rgba(255,75,46,.8)";ctx.shadowBlur=14;
+  ctx.beginPath();ctx.arc(cx,cy,r+16,ang(REDLINE)-Math.PI/2,ang(SCALE)-Math.PI/2);ctx.stroke();
+  ctx.shadowBlur=0;
+  // x1000 label
+  ctx.fillStyle="#6d675c";ctx.font="600 "+Math.round(r*0.055)+"px 'Segoe UI',sans-serif";
+  ctx.fillText("×1000 RPM",cx,cy-r*0.42);
+  // digital rpm
+  ctx.fillStyle="#f2f0ea";ctx.font="italic 800 "+Math.round(r*0.20)+"px 'Segoe UI',sans-serif";
+  ctx.shadowColor="rgba(255,180,84,.35)";ctx.shadowBlur=18;
+  ctx.fillText(String(Math.round(state.disp/10)*10),cx,cy+r*0.16);
+  ctx.shadowBlur=0;
+  // shift lamp (inside dial, 6 o'clock — in the bottom gap the needle never enters)
+  var lo=lampOn(state.disp,t),lr=r*0.055;
+  var lpos=pt(cx,cy,r*0.44,Math.PI);
+  if(lo>0.5){ ctx.shadowColor="rgba(255,180,84,"+lo+")";ctx.shadowBlur=22*lo; }
+  else { ctx.shadowBlur=0; }
+  ctx.beginPath();ctx.arc(lpos[0],lpos[1],lr,0,TAU);
+  ctx.fillStyle="rgba(255,180,84,"+lo+")";
+  ctx.fill();ctx.shadowBlur=0;
+  ctx.strokeStyle="#2a2620";ctx.lineWidth=2;ctx.stroke();
+  // needle
+  var na=ang(state.disp);
+  var nb=pt(cx,cy,r*0.14,na+Math.PI),nt=pt(cx,cy,r*0.86,na);
+  ctx.lineCap="round";
+  ctx.strokeStyle="rgba(255,180,84,.9)";ctx.lineWidth=6;
+  ctx.shadowColor="rgba(255,180,84,.9)";ctx.shadowBlur=16;
+  ctx.beginPath();ctx.moveTo(nb[0],nb[1]);ctx.lineTo(nt[0],nt[1]);ctx.stroke();
+  ctx.shadowBlur=0;
+  ctx.strokeStyle="#f2f0ea";ctx.lineWidth=2.5;
+  ctx.beginPath();ctx.moveTo(nb[0],nb[1]);ctx.lineTo(nt[0],nt[1]);ctx.stroke();
+  ctx.lineCap="butt";
+  // hub
+  ctx.beginPath();ctx.arc(cx,cy,r*0.07,0,TAU);
+  ctx.fillStyle="#0b0a08";ctx.fill();
+  ctx.strokeStyle="#ffb454";ctx.lineWidth=2;ctx.stroke();
+}
+
+/* ---------- dom ---------- */
+var gearEl=document.getElementById("gear"),speedEl=document.getElementById("speed"),
+    lapEl=document.getElementById("lap"),modeEl=document.getElementById("mode"),
+    ecuEl=document.getElementById("eculine"),flashEl=document.getElementById("flash"),
+    coolEl=document.querySelector("#coolbar i"),fuelEl=document.querySelector("#fuelbar i");
+function fmtLap(s){
+  var m=Math.floor(s/60),ss=Math.floor(s%60),d=Math.floor((s*10)%10);
+  return m+":"+(ss<10?"0":"")+ss+"."+d;
+}
+function dom(){
+  gearEl.textContent=state.gear===0?"N":state.gear;
+  speedEl.textContent=String(Math.round(state.speed));
+  lapEl.textContent=fmtLap(state.lapT);
+  modeEl.textContent=state.mode.toUpperCase();
+  ecuEl.textContent=state.msg;
+  flashEl.style.opacity=state.flashT>0?1:0;
+  coolEl.style.width=Math.max(0,Math.min(100,(state.coolant-40)/80*100))+"%";
+  fuelEl.style.width=(state.fuel*100)+"%";
+}
+
+/* ---------- input ---------- */
+window.addEventListener("keydown",function(e){
+  var k=e.key.toLowerCase();
+  if(k==="m"&&!e.repeat){
+    state.mode=state.mode==="demo"?"manual":"demo";
+    if(state.mode==="demo"){ state.phase=0;state.phaseT=0;enterPhase(); }
+    else { state.throttle=0;state.msg="MANUAL // READY"; }
+    return;
+  }
+  if(state.mode!=="manual"||e.repeat) return;
+  if(k===" "||k==="w"){ keys.thr=true; e.preventDefault(); }
+  else if(k==="s"||k==="x"){ keys.brk=true; e.preventDefault(); }
+  else if(k==="r"){ state.gear=0;state.rpm=IDLE;state.speed=0; }
+  else if(k>="1"&&k<="6"){ shiftTo(+k); }
+  else if(k==="arrowup"){ shiftTo(Math.min(6,state.gear+1)); e.preventDefault(); }
+  else if(k==="arrowdown"){ shiftTo(Math.max(1,state.gear-1)); e.preventDefault(); }
+});
+window.addEventListener("keyup",function(e){
+  var k=e.key.toLowerCase();
+  if(k===" "||k==="w") keys.thr=false;
+  if(k==="s"||k==="x") keys.brk=false;
+});
+modeEl.addEventListener("click",function(){
+  state.mode=state.mode==="demo"?"manual":"demo";
+  if(state.mode==="demo"){ state.phase=0;state.phaseT=0;enterPhase(); }
+});
+
+/* ---------- boot ---------- */
+try{
+  resize();
+  state.phase=0;state.phaseT=0;enterPhase();
+  var last=performance.now();
+  (function frame(now){
+    var dt=Math.min(0.05,(now-last)/1000);last=now;
+    state.t=now/1000;
+    step(dt);render(state.t);dom();
+    requestAnimationFrame(frame);
+  })(last);
+  window.__booted=true;
+}catch(e){
+  window.__err=String(e&&e.stack||e);
+}
+})();
+</script>
+</body>
+</html>

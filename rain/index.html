@@ -1,0 +1,165 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>rain</title>
+<style>
+  html,body{margin:0;height:100%;background:#050302;overflow:hidden;cursor:crosshair}
+  canvas{display:block}
+  #hud{position:fixed;left:14px;bottom:12px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#b97a1e;letter-spacing:.08em;text-transform:uppercase;pointer-events:none;text-shadow:0 0 8px rgba(255,160,40,.35)}
+  #help{position:fixed;right:14px;top:12px;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;color:#7a5216;text-align:right;letter-spacing:.06em;pointer-events:none}
+  #caught{position:fixed;right:14px;top:52px;width:320px;font:13px/1.7 ui-monospace,Menlo,Consolas,monospace;color:#ffb347;pointer-events:none;text-align:right;max-height:60vh;overflow:hidden}
+  #caught .c{text-shadow:0 0 6px rgba(255,150,30,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  #caught .n{color:#8a5a14}
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="hud">rain &middot; <span id="nt">&hellip;</span> titles &middot; caught <span id="nc">0</span></div>
+<div id="help">hover freezes a stream<br>click catches the title<br>space pauses</div>
+<div id="caught"></div>
+<script>
+(function(){
+'use strict';
+var cv = document.getElementById('cv');
+var ctx = cv.getContext('2d');
+var hudNt = document.getElementById('nt');
+var hudNc = document.getElementById('nc');
+var caughtBox = document.getElementById('caught');
+
+var FONT = 18;
+var W = 0, H = 0, rows = 0, charW = 11, charH = 22, cols = 0;
+var titles = [];
+var colsArr = [];
+var paused = false;
+var hoverCol = -1;
+var caught = [];
+var last = 0;
+
+function pickTitle(){
+  if(!titles.length) return 'note';
+  return titles[(Math.random()*titles.length)|0];
+}
+
+function newCol(i, stagger){
+  var t = pickTitle();
+  return {
+    x: i*charW,
+    str: t,
+    y: stagger ? (-Math.random()*H) : (-t.length*charH - Math.random()*H*0.5),
+    speed: 140 + Math.random()*300,
+    flash: 0
+  };
+}
+
+function initCols(){
+  colsArr = [];
+  for(var i=0;i<cols;i++) colsArr.push(newCol(i, true));
+}
+
+function resize(){
+  var dpr = window.devicePixelRatio || 1;
+  W = window.innerWidth;
+  H = window.innerHeight;
+  cv.width = Math.round(W*dpr);
+  cv.height = Math.round(H*dpr);
+  cv.style.width = W+'px';
+  cv.style.height = H+'px';
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.font = FONT+'px ui-monospace, Menlo, Consolas, monospace';
+  charW = Math.ceil(ctx.measureText('M').width);
+  charH = Math.round(FONT*1.25);
+  rows = Math.ceil(H/charH);
+  cols = Math.ceil(W/charW);
+  initCols();
+  ctx.fillStyle = '#050302';
+  ctx.fillRect(0,0,W,H);
+}
+
+function renderCaught(){
+  hudNc.textContent = String(caught.length);
+  var html = '';
+  for(var i=0;i<caught.length;i++){
+    var t = caught[i].replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    html += '<div class="c"><span class="n">'+String(i+1).padStart(2,'0')+'</span> '+t+'</div>';
+  }
+  caughtBox.innerHTML = html;
+}
+
+function catchCol(i){
+  var c = colsArr[i];
+  if(!c) return;
+  caught.unshift(c.str);
+  if(caught.length > 14) caught.pop();
+  renderCaught();
+  colsArr[i] = newCol(i, false);
+}
+
+function frame(ts){
+  requestAnimationFrame(frame);
+  var dt = Math.min(0.05, (ts - last)/1000);
+  last = ts;
+  if(paused) return;
+  ctx.fillStyle = 'rgba(5,3,2,0.16)';
+  ctx.fillRect(0,0,W,H);
+  for(var i=0;i<colsArr.length;i++){
+    var c = colsArr[i];
+    if(i !== hoverCol) c.y += c.speed*dt;
+    if(c.y > H + 40){
+      colsArr[i] = newCol(i, false);
+      continue;
+    }
+    var n = c.str.length;
+    var start = Math.max(0, Math.floor(-c.y/charH));
+    var end = Math.min(n-1, Math.floor((H - c.y)/charH));
+    if(end < start) continue;
+    for(var k=start;k<=end;k++){
+      var y = c.y + k*charH;
+      if(i === hoverCol){
+        ctx.fillStyle = 'rgba(255,214,140,0.95)';
+      } else if(k === end){
+        ctx.fillStyle = '#ffe9c4';
+      } else {
+        ctx.fillStyle = 'rgba(255,150,30,0.8)';
+      }
+      ctx.fillText(c.str[k], c.x, y);
+    }
+  }
+}
+
+window.addEventListener('mousemove', function(e){
+  hoverCol = Math.floor(e.clientX / charW);
+  if(hoverCol < 0 || hoverCol >= cols) hoverCol = -1;
+});
+window.addEventListener('mouseleave', function(){ hoverCol = -1; });
+window.addEventListener('click', function(e){
+  if(paused) return;
+  var i = Math.floor(e.clientX / charW);
+  if(i >= 0 && i < cols) catchCol(i);
+});
+window.addEventListener('keydown', function(e){
+  if(e.code === 'Space'){
+    paused = !paused;
+    document.getElementById('hud').style.opacity = paused ? '0.35' : '1';
+  }
+});
+window.addEventListener('resize', resize);
+
+function start(){
+  hudNt.textContent = String(titles.length);
+  resize();
+  requestAnimationFrame(function(ts){ last = ts; frame(ts); });
+}
+
+fetch('titles.json').then(function(r){ return r.json(); }).then(function(t){
+  titles = t;
+  start();
+}).catch(function(){
+  titles = [];
+  for(var i=0;i<64;i++) titles.push('note-'+i);
+  start();
+});
+})();
+</script>
+</body>
+</html>
