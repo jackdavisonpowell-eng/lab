@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Refuse to publish Jack's data. Fails closed: if the scan cannot run, no push.
+set -euo pipefail
+cd "$(git rev-parse --show-toplevel)"
+if ! python3 .bin/check-tree.py; then
+  echo "pre-push: BLOCKED - personal data in the tree." >&2
+  echo "          Add it to .gitignore, or keep it out of the lab." >&2
+  exit 1
+fi
