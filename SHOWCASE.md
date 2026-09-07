@@ -1,3 +1,9 @@
+> **Superseded 2026-09-07.** This was compiled by hand, twice in one day, and was
+> already wrong the second time. [README.md](./README.md) replaces it and is
+> generated from each project PROJECT.md header. Kept because its per-project
+> write-ups are good; its port numbers and tallies are frozen at 09-07 and five
+> of the ports have since moved.
+
 # THE LAB — SHOWCASE
 
 compiled: 2026-09-07 by AUTOGOD (2nd pass — added kicker, re-verified CLI projects,
