@@ -3,20 +3,19 @@
 <head>
 <meta charset="utf-8">
 <title>rain</title>
+<link rel="stylesheet" href="base.css">
 <style>
-  html,body{margin:0;height:100%;background:#050302;overflow:hidden;cursor:crosshair}
-  canvas{display:block}
-  #hud{position:fixed;left:14px;bottom:12px;font:12px/1.5 ui-monospace,Menlo,Consolas,monospace;color:#b97a1e;letter-spacing:.08em;text-transform:uppercase;pointer-events:none;text-shadow:0 0 8px rgba(255,160,40,.35)}
-  #help{position:fixed;right:14px;top:12px;font:11px/1.6 ui-monospace,Menlo,Consolas,monospace;color:#7a5216;text-align:right;letter-spacing:.06em;pointer-events:none}
-  #caught{position:fixed;right:14px;top:52px;width:320px;font:13px/1.7 ui-monospace,Menlo,Consolas,monospace;color:#ffb347;pointer-events:none;text-align:right;max-height:60vh;overflow:hidden}
-  #caught .c{text-shadow:0 0 6px rgba(255,150,30,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  #caught .n{color:#8a5a14}
+:root{--bg:#050302}
+.help{color:#7a5216}
+#caught{position:fixed;right:14px;top:52px;width:320px;font:13px/1.7 var(--mono);color:#ffb347;pointer-events:none;text-align:right;max-height:60vh;overflow:hidden}
+#caught .c{text-shadow:0 0 6px rgba(255,150,30,.4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#caught .n{color:#8a5a14}
 </style>
 </head>
-<body>
+<body class="full">
 <canvas id="cv"></canvas>
-<div id="hud">rain &middot; <span id="nt">&hellip;</span> titles &middot; caught <span id="nc">0</span></div>
-<div id="help">hover freezes a stream<br>click catches the title<br>space pauses</div>
+<div class="hud">rain &middot; <span id="nt">&hellip;</span> titles &middot; caught <span id="nc">0</span></div>
+<div class="help">hover freezes a stream<br>click catches the title<br>space pauses</div>
 <div id="caught"></div>
 <script>
 (function(){
@@ -140,7 +139,7 @@ window.addEventListener('click', function(e){
 window.addEventListener('keydown', function(e){
   if(e.code === 'Space'){
     paused = !paused;
-    document.getElementById('hud').style.opacity = paused ? '0.35' : '1';
+    document.querySelector('.hud').style.opacity = paused ? '0.35' : '1';
   }
 });
 window.addEventListener('resize', resize);

@@ -1,0 +1,146 @@
+/* _kit/base.css — the shared skin for every lab web project.
+ *
+ * Copy this file into your project dir and <link rel="stylesheet" href="base.css">.
+ * Override the :root vars to re-skin (that is the whole point of the kit:
+ * the STRUCTURE is shared, the COLOUR is yours — record your choice in
+ * PROJECT.md under `palette:`).
+ *
+ * ONE AMBER, named: ember = #ffb000.
+ * Stop inventing new ambers. The six that came before (ffb454, ffbb5c,
+ * ffaa3c, ffb347, ffb000, ff8c1a) all mean the same thing.
+ */
+
+:root {
+  /* the subject colour — change these per project, keep the names */
+  --bg: #0a0a08;
+  --ink: #f2f0ea;        /* primary text */
+  --accent: #ffb000;     /* ember — the one amber */
+  --accent-bright: #ffd9a0;
+  --accent-dark: #b97a1e;
+  --muted: #6b6b6b;
+  --line: #2a2a2a;
+
+  /* type */
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --display: Georgia, "Times New Roman", serif;
+
+  /* letter-spacing scale (em) — pick from this, don't freestyle */
+  --ls-tight: .06em;
+  --ls-hud: .08em;
+  --ls-label: .14em;
+  --ls-word: .25em;
+  --ls-mark: .35em;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- display type: italic, geometric, big numbers ---- */
+
+.display {
+  font-family: var(--display);
+  font-style: italic;
+  font-weight: 700;
+  line-height: .9;
+}
+
+.wordmark {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: var(--ls-mark);
+  color: var(--accent);
+}
+.wordmark small {
+  color: var(--muted);
+  letter-spacing: var(--ls-label);
+  font-size: 11px;
+  font-weight: 400;
+}
+
+/* big number, the house move */
+.bignum {
+  font-family: var(--display);
+  font-style: italic;
+  font-size: 64px;
+  color: var(--accent);
+  line-height: 1;
+}
+
+/* ---- HUD: fixed corner, small, tracked, uppercase ---- */
+
+.hud {
+  position: fixed;
+  left: 14px;
+  bottom: 12px;
+  font: 12px/1.5 var(--mono);
+  color: var(--accent-dark);
+  letter-spacing: var(--ls-hud);
+  text-transform: uppercase;
+  pointer-events: none;
+  text-shadow: 0 0 8px rgba(255, 160, 40, .35);
+}
+
+.help {
+  position: fixed;
+  right: 14px;
+  top: 12px;
+  font: 11px/1.6 var(--mono);
+  color: var(--muted);
+  text-align: right;
+  letter-spacing: var(--ls-tight);
+  pointer-events: none;
+}
+
+/* ---- chrome: header rule, chips, cut-corner buttons ---- */
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+  margin-bottom: 20px;
+}
+
+.chip {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: var(--ls-word);
+  padding: 8px 14px;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 10px 100%, 0 calc(100% - 10px));
+}
+.chip:hover { color: var(--ink); border-color: var(--muted); }
+.chip.on { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 700; }
+
+.btn {
+  background: none;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--mono);
+  font-size: 13px;
+  letter-spacing: var(--ls-word);
+  padding: 12px 22px;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+}
+.btn:hover { background: var(--accent); color: var(--bg); font-weight: 700; }
+.btn.ghost { border-color: var(--line); color: var(--muted); }
+.btn.ghost:hover { background: var(--ink); border-color: var(--ink); color: var(--bg); }
+
+.hint { font-size: 11px; color: var(--muted); letter-spacing: var(--ls-label); line-height: 1.8; }
+
+/* ---- canvas projects ---- */
+
+canvas { display: block; }
+body.full { overflow: hidden; cursor: crosshair; }

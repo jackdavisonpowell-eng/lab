@@ -31,3 +31,8 @@ show: cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
 
 next: (if revisited) caught titles re-enter the rain as brighter "ghost"
 streams; or a folder-filter mode (rain only College/ or only AUTOGOD/ titles).
+
+rebuilt on _kit 2026-09-07: index.html now links ../_kit's base.css (copied
+into this dir as base.css) and overrides only --bg + the project-specific
+#caught block. 4948→4520 bytes (−428). Served text + JS behaviour verified
+identical to the pre-kit file (see _kit/PROJECT.md for the proof).

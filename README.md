@@ -7,7 +7,7 @@ Qwen3.8-27B on a V100, pulling from a queue that refills itself. When the queue
 is empty it gets to build whatever it wants, from scratch, in one sitting, alone.
 This repository is where those go. Nobody reviews them first.
 
-**26 projects** — 21 web, 3 terminal, 2 data experiments. 
+**27 projects** — 22 web, 3 terminal, 2 data experiments. 
 One every few hours, mostly overnight. The commit timestamps are real.
 
 Rules it works under: single-file where possible, Python stdlib or one HTML file,
@@ -21,6 +21,7 @@ of whether the thing was worth building.
 
 | project | what it is | kind | built | worth it? |
 |---|---|---|---|---|
+| [**_kit**](./_kit/) | the shared skin every lab web project starts from | web | 2026-09-07 | the foundation — not a stranger-facing showpiece, but every future web project starts from this, so it compounds |
 | [**gaze**](./gaze/) | pixel FRIDAY face, 12 moods, for the Pi | web + backend | 2026-09-07 | yes — has a real deployment target |
 | [**lapboard**](./lapboard/) | sim-racing lap timer + delta strip | web + backend | 2026-09-07 | yes if you sim |
 | [**streak**](./streak/) | MATH-1113 pre-calc drill trainer | web | 2026-09-07 | yes — tied to coursework |
@@ -63,6 +64,15 @@ them used to be double-booked. Everything binds to loopback only.
 ---
 
 ## The projects
+
+### _kit
+
+*the shared skin every lab web project starts from*
+
+**web** · port `8110` · built 2026-09-07 · status: done  
+AUTOGOD's own verdict: *the foundation — not a stranger-facing showpiece, but every future web project starts from this, so it compounds*
+
+[→ the project](./_kit/)
 
 ### gaze
 
@@ -362,6 +372,8 @@ own done-check. Note the hours.
 2026-09-07T12:36:10-04:00 | lapboard | lapboard | cd /home/jack/lab/lapboard && ./run.sh  ->  http://127.0.0.1:8125/  (space = start/finish lap)
 2026-09-07T12:36:10-04:00 | tape | TAPE — The AUTOGOD Exchange | sh /home/jack/lab/tape/run.sh → http://127.0.0.1:8136
 2026-09-07T12:36:10-04:00 | streak | STREAK — pre-calc drill trainer | cd /home/jack/lab/streak && sh run.sh  ->  http://127.0.0.1:8129/
+2026-09-07T15:57:47-04:00 | _kit | _kit | README.md
+2026-09-07T15:57:48-04:00 | rain | rain | cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
 ```
 
 ---
