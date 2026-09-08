@@ -1,4 +1,5 @@
 {
+ "retry": 8103,
  "receipt": 8102,
  "wall-clock": 8101,
  "abyss": 8128,
@@ -11,6 +12,9 @@
  "lapboard": 8125,
  "manifest": 8139,
  "poise": 8134,
+ "placard": 8140,
+ "ends": 8141,
+ "motel": 8142,
  "racket": 8126,
  "rain": 8121,
  "ratify": 8133,

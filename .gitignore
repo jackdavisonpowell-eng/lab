@@ -17,3 +17,11 @@ v100-char/per-task.md
 __pycache__/
 *.pyc
 .DS_Store
+
+# PULSE projects. kind: pulse means "built for Jack, from his own data" - they read
+# the live vault (journal, loose ends) and their fixtures carry real course numbers
+# and assignment dates. Strangers have no use for them and they are not showpieces,
+# so they stay on thebeast. Blocking on them was also blocking every showpiece in
+# the same push: placard and motel were built 09-08 and never reached Pages. (09-08)
+retry/
+ends/

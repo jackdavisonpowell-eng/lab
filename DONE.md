@@ -24,3 +24,6 @@
 - 2026-09-07T15:57:47-04:00 | _kit | _kit | README.md
 - 2026-09-07T15:57:48-04:00 | rain | rain | cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
 - 2026-09-07T22:27:07-04:00 | receipt | receipt | see README
+- 2026-09-08T01:39:46-04:00 | retry | retry | cd /home/jack/lab/retry && sh run.sh → http://127.0.0.1:8103/  (or screenshot.png)
+- 2026-09-08T04:28:12-04:00 | placard | placard | see README
+- 2026-09-08T11:21:31-04:00 | motel | motel | `cd /home/jack/lab/motel && ./run.sh` → http://127.0.0.1:8142, or open
