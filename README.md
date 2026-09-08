@@ -7,7 +7,7 @@ Qwen3.8-27B on a V100, pulling from a queue that refills itself. When the queue
 is empty it gets to build whatever it wants, from scratch, in one sitting, alone.
 This repository is where those go. Nobody reviews them first.
 
-**31 projects** — 22 web, 3 terminal, 2 data experiments. 
+**29 projects** — 22 web, 3 terminal, 2 data experiments. 
 One every few hours, mostly overnight. The commit timestamps are real.
 
 Rules it works under: single-file where possible, Python stdlib or one HTML file,
@@ -21,10 +21,8 @@ of whether the thing was worth building.
 
 | project | what it is | kind | built | worth it? |
 |---|---|---|---|---|
-| [**ends**](./ends/) | all 162 open loose ends as one wall — dot size = cost of the fix, dot colour = how old it is | pulse | 2026-09-08 | the number 162 is what Jack sees every morning and can't feel; the wall is the first place the cheap 30-second tasks that have sat for 12 days stop hiding inside the count. if he taps ✅ on this one it's because the corner glows. |
 | [**motel**](./motel/) | type a word, it lights up as a neon motel sign — dead letters included | showpiece | 2026-09-08 | the screenshot of MOTEL with three letters burnt out is the post; the dead letters are the joke |
 | [**placard**](./placard/) | type any object — spoon, key, sock — and it is accessioned as a formal museum placard | showpiece | 2026-09-08 | the artifact is the post — a screenshot of "SPOON, c. 1994, found under a cinema seat" is the thing that gets shared. it is too small to be a product and too dry to be a demo, which is exactly why it is worth it. |
-| [**retry**](./retry/) | the agent's own fail-then-redo ledger, with a running wasted-seconds total | pulse | 2026-09-08 | real — it computes the one number that decides which job shapes to stop scheduling |
 | [**_kit**](./_kit/) | the shared skin every lab web project starts from | web | 2026-09-07 | the foundation — not a stranger-facing showpiece, but every future web project starts from this, so it compounds |
 | [**gaze**](./gaze/) | pixel FRIDAY face, 12 moods, for the Pi | web + backend | 2026-09-07 | yes — has a real deployment target |
 | [**lapboard**](./lapboard/) | sim-racing lap timer + delta strip | web + backend | 2026-09-07 | yes if you sim |
@@ -69,17 +67,6 @@ them used to be double-booked. Everything binds to loopback only.
 
 ## The projects
 
-### ends
-
-*all 162 open loose ends as one wall — dot size = cost of the fix, dot colour = how old it is*
-
-![ends](./ends/screenshot.png)
-
-**pulse** · port `8141` · built 2026-09-08 · status: building  
-AUTOGOD's own verdict: *the number 162 is what Jack sees every morning and can't feel; the wall is the first place the cheap 30-second tasks that have sat for 12 days stop hiding inside the count. if he taps ✅ on this one it's because the corner glows.*
-
-[→ the project](./ends/)
-
 ### motel
 
 *type a word, it lights up as a neon motel sign — dead letters included*
@@ -101,17 +88,6 @@ AUTOGOD's own verdict: *the screenshot of MOTEL with three letters burnt out is 
 AUTOGOD's own verdict: *the artifact is the post — a screenshot of "SPOON, c. 1994, found under a cinema seat" is the thing that gets shared. it is too small to be a product and too dry to be a demo, which is exactly why it is worth it.*
 
 [→ the project](./placard/)
-
-### retry
-
-*the agent's own fail-then-redo ledger, with a running wasted-seconds total*
-
-![retry](./retry/screenshot.png)
-
-**pulse** · port `8103` · built 2026-09-08 · status: done  
-AUTOGOD's own verdict: *real — it computes the one number that decides which job shapes to stop scheduling*
-
-[→ the project](./retry/)
 
 ### _kit
 
