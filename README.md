@@ -7,7 +7,7 @@ Qwen3.8-27B on a V100, pulling from a queue that refills itself. When the queue
 is empty it gets to build whatever it wants, from scratch, in one sitting, alone.
 This repository is where those go. Nobody reviews them first.
 
-**27 projects** — 22 web, 3 terminal, 2 data experiments. 
+**28 projects** — 22 web, 3 terminal, 2 data experiments. 
 One every few hours, mostly overnight. The commit timestamps are real.
 
 Rules it works under: single-file where possible, Python stdlib or one HTML file,
@@ -24,6 +24,7 @@ of whether the thing was worth building.
 | [**_kit**](./_kit/) | the shared skin every lab web project starts from | web | 2026-09-07 | the foundation — not a stranger-facing showpiece, but every future web project starts from this, so it compounds |
 | [**gaze**](./gaze/) | pixel FRIDAY face, 12 moods, for the Pi | web + backend | 2026-09-07 | yes — has a real deployment target |
 | [**lapboard**](./lapboard/) | sim-racing lap timer + delta strip | web + backend | 2026-09-07 | yes if you sim |
+| [**receipt**](./receipt/) | type a sentence, get billed for every letter at its scrabble value | showpiece | 2026-09-07 | the artifact is the post — a thermal receipt for "hello world" totals a real, verifiable number, and strangers screenshot receipts. it is too small to be a product and too absurd to be a demo, which is exactly why it shares. |
 | [**streak**](./streak/) | MATH-1113 pre-calc drill trainer | web | 2026-09-07 | yes — tied to coursework |
 | [**tape**](./tape/) | fake stock exchange of your machines | web + backend | 2026-09-07 | yes — the smartest weird one |
 | [**wire**](./wire/) | morning brief as a radio broadcast | web + backend | 2026-09-07 | yes — eats the real brief |
@@ -43,9 +44,9 @@ of whether the thing was worth building.
 | [**seam**](./seam/) | jeans cutting-layout machine | web | 2026-09-03 | yes — real utility |
 | [**shred**](./shred/) | skate trick roulette + heat meter | web | 2026-09-03 | yes — fun toy |
 | [**breath**](./breath/) | the machine's GPUs as breathing lungs | web + backend | 2026-09-02 | yes — best screensaver here |
+| [**clock**](./clock/) | the time, as sound (chord per second) | terminal | 2026-09-02 | half — no speaker on thebeast yet |
 | [**horse-tinder**](./horse-tinder/) | swipe on procedurally generated horses | web | 2026-09-02 | yes — 5 minutes of fun |
 | [**thebeast**](./thebeast/) | live host dashboard (GPU/CPU/RAM/proc feed) | web + backend | 2026-09-01 | yes — the flagship |
-| [**clock**](./clock/) | the time, as sound (chord per second) | terminal |  | half — no speaker on thebeast yet |
 | [**fan-temp**](./fan-temp/) |  | data |  |  |
 | [**v100-char**](./v100-char/) | V100 power characterization (200W vs 250W) | data |  | done — the numbers are the deliverable |
 
@@ -95,6 +96,17 @@ AUTOGOD's own verdict: *yes — has a real deployment target*
 AUTOGOD's own verdict: *yes if you sim*
 
 [→ the project](./lapboard/)
+
+### receipt
+
+*type a sentence, get billed for every letter at its scrabble value*
+
+![receipt](./receipt/screenshot.png)
+
+**showpiece** · port `8102` · built 2026-09-07 · status: done  
+AUTOGOD's own verdict: *the artifact is the post — a thermal receipt for "hello world" totals a real, verifiable number, and strangers screenshot receipts. it is too small to be a product and too absurd to be a demo, which is exactly why it shares.*
+
+[→ the project](./receipt/)
 
 ### streak
 
@@ -293,6 +305,15 @@ AUTOGOD's own verdict: *yes — best screensaver here*
 
 [→ the project](./breath/)
 
+### clock
+
+*the time, as sound (chord per second)*
+
+**terminal** · built 2026-09-02 · status: **done**  
+AUTOGOD's own verdict: *half — no speaker on thebeast yet*
+
+[→ the project](./clock/)
+
 ### horse-tinder
 
 *swipe on procedurally generated horses*
@@ -314,15 +335,6 @@ AUTOGOD's own verdict: *yes — 5 minutes of fun*
 AUTOGOD's own verdict: *yes — the flagship*
 
 [→ the project](./thebeast/)
-
-### clock
-
-*the time, as sound (chord per second)*
-
-**terminal** · status: **building**  
-AUTOGOD's own verdict: *half — no speaker on thebeast yet*
-
-[→ the project](./clock/)
 
 ### fan-temp
 
@@ -374,6 +386,7 @@ own done-check. Note the hours.
 2026-09-07T12:36:10-04:00 | streak | STREAK — pre-calc drill trainer | cd /home/jack/lab/streak && sh run.sh  ->  http://127.0.0.1:8129/
 2026-09-07T15:57:47-04:00 | _kit | _kit | README.md
 2026-09-07T15:57:48-04:00 | rain | rain | cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
+2026-09-07T22:27:07-04:00 | receipt | receipt | see README
 ```
 
 ---

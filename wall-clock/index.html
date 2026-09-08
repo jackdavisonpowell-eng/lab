@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>wall-clock — the time</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🕐</text></svg>">
+<style>
+  /* wall-clock — a monotone clock in the side-wall's own skin.
+     MONOTONE (the wall's rule, 08-26): one white family for everything;
+     states differ by BRIGHTNESS + MOTION, not hue. A clock never "needs
+     Jack", so there is no amber here — pure white on near-black, the only
+     life in the glow and the drift. */
+  :root {
+    --ground:#07080A; --panel:#0C0D11; --inset:#08090D;
+    --text:#EDEEF2; --muted:#8B8E99; --faint:#5A5D68;
+    --ice:#D9DCE4;  --ice-glo:rgba(235,238,245,.28);  --ice-dim:rgba(235,238,245,.09);
+    --live:#FFFFFF; --live-glo:rgba(255,255,255,.42); --live-dim:rgba(255,255,255,.11);
+    --f-d:"Archivo","Avenir Next","Helvetica Neue",Arial,sans-serif;
+    --f-m:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  /* ground on html, body transparent so the fixed star canvas shows through */
+  html{background:
+       radial-gradient(1200px 520px at 50% -12%, rgba(255,255,255,.05), transparent 62%),
+       radial-gradient(900px 700px at 50% 118%, rgba(255,255,255,.03), transparent 60%),
+       var(--ground)}
+  html,body{height:100%}
+  body{margin:0;background:transparent;overflow:hidden;
+       color:var(--text);font-family:var(--f-m);
+       -webkit-font-smoothing:antialiased}
+  /* the drifting star field — behind everything */
+  #sky{position:fixed;inset:0;z-index:0;pointer-events:none}
+
+  .stage{position:relative;z-index:1;height:100%;
+       display:flex;flex-direction:column;justify-content:center;
+       align-items:center;padding:0 1.2rem}
+
+  /* ---------- top bar (the wall's .bar, trimmed to a clock) ---------- */
+  .bar{position:fixed;top:0;left:0;right:0;z-index:2;
+       display:flex;align-items:center;gap:1rem;padding:1.1rem 1.4rem;
+       font-size:.72rem;color:var(--muted);letter-spacing:.02em}
+  .bar .dom{font-family:var(--f-d);font-style:italic;font-weight:900;
+       font-size:1rem;letter-spacing:.02em;text-transform:uppercase;
+       color:var(--text);text-shadow:0 0 12px var(--ice-glo)}
+  .bar .sub{color:var(--faint);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase}
+  .bar .sp{flex:1}
+  .dotlive{display:inline-flex;align-items:center;gap:.5rem;
+       font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .dotlive i{width:7px;height:7px;border-radius:50%;background:var(--live);display:block;
+       box-shadow:0 0 8px var(--live-glo),0 0 16px var(--live-glo);
+       animation:beat 2.6s ease-in-out infinite}
+  @keyframes beat{0%,100%{opacity:.55}50%{opacity:1}}
+
+  /* ---------- the time ---------- */
+  .clock{text-align:center;line-height:.82;user-select:none}
+  .hm{font-family:var(--f-d);font-style:italic;font-weight:900;
+       font-size:clamp(5.5rem,26vw,21rem);letter-spacing:-.02em;
+       font-variant-numeric:tabular-nums;line-height:.8;
+       color:var(--text);
+       text-shadow:0 0 22px var(--ice-glo),0 0 70px var(--ice-dim)}
+  .hm .colon{opacity:.9}
+  /* the seconds ride up as a smaller glowing superscript — the tick IS the pulse */
+  .ss{font-family:var(--f-d);font-style:italic;font-weight:900;
+       font-size:clamp(1.6rem,7vw,5.2rem);letter-spacing:0;
+       font-variant-numeric:tabular-nums;vertical-align:top;
+       margin-left:.12em;color:var(--live);
+       text-shadow:0 0 16px var(--live-glo),0 0 40px var(--live-dim);
+       display:inline-block;transform:translateY(.02em)}
+  .ss.tick{animation:tick .5s ease-out}
+  @keyframes tick{0%{transform:translateY(.02em) scale(1.14);filter:brightness(1.9)}
+                  100%{transform:translateY(.02em) scale(1);filter:brightness(1)}}
+
+  /* the per-minute sweep — motion, not hue: a thin white line fills 0->60s */
+  .sweep{width:min(70vw,46rem);height:2px;margin:1.5rem auto 0;
+       background:rgba(235,238,245,.10);border-radius:2px;overflow:hidden;
+       box-shadow:inset 0 0 6px rgba(0,0,0,.6)}
+  .sweep i{display:block;height:100%;width:0%;
+       background:var(--live);box-shadow:0 0 10px var(--live-glo),0 0 22px var(--live-glo)}
+  .sweeplab{display:flex;justify-content:space-between;width:min(70vw,46rem);
+       margin:.5rem auto 0;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;
+       color:var(--faint);font-variant-numeric:tabular-nums}
+
+  /* the date, muted + tracked, under the sweep */
+  .date{margin-top:1.9rem;font-size:clamp(.72rem,1.6vw,.95rem);
+       letter-spacing:.34em;text-transform:uppercase;color:var(--muted);
+       text-shadow:0 0 10px var(--ice-dim)}
+  .date b{color:var(--ice);font-weight:600}
+
+  /* bottom hint */
+  .hint{position:fixed;bottom:1.1rem;left:0;right:0;z-index:2;text-align:center;
+       font-size:.62rem;letter-spacing:.18em;text-transform:uppercase;color:var(--faint)}
+
+  @media (prefers-reduced-motion:reduce){
+    .dotlive i{animation:none}
+    .ss.tick{animation:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="sky" aria-hidden="true"></canvas>
+
+<div class="bar">
+  <span class="dom">wall-clock</span>
+  <span class="sub">// the time</span>
+  <span class="sp"></span>
+  <span class="dotlive"><i></i><span id="tz">local</span></span>
+</div>
+
+<div class="stage">
+  <div class="clock" role="timer" aria-live="off">
+    <span class="hm" id="hm">--<span class="colon">:</span>--</span><span class="ss" id="ss">--</span>
+  </div>
+  <div class="sweep"><i id="sweepfill"></i></div>
+  <div class="sweeplab"><span>00</span><span>minute</span><span>60</span></div>
+  <div class="date" id="date">— — —</div>
+</div>
+
+<div class="hint">monotone · the wall's skin · no deps</div>
+
+<script>
+/* ── the drifting star field, ported from the wall's sky() ─────────────────
+   ~150-480 drifters at three parallax depths, slow leftward drift, a gentle
+   twinkle. No constellations here — a clock wants quiet, not pictures. */
+(function sky(){
+  const cv = document.getElementById("sky");
+  if (!cv || !cv.getContext) return;
+  const g = cv.getContext("2d");
+  const DPR = Math.min(devicePixelRatio || 1, 2);
+  const SPEED = .7;
+  let W = 0, H = 0, stars = [];
+  function resize(){
+    W = cv.width = Math.floor(innerWidth * DPR);
+    H = cv.height = Math.floor(innerHeight * DPR);
+    cv.style.width = innerWidth + "px";
+    cv.style.height = innerHeight + "px";
+  }
+  function seed(){
+    const n = Math.max(160, Math.min(460, Math.round(innerWidth * innerHeight / 6500)));
+    stars = Array.from({length:n}, () => {
+      const d = Math.random() < .5 ? 0 : (Math.random() < .65 ? 1 : 2);
+      return { x: Math.random()*W, y: Math.random()*H, d,
+        vx: -(d*.55 + .35)*SPEED*DPR, vy: 0,
+        tw: Math.random()*6.28, tws: .5 + Math.random()*1.1 };
+    });
+  }
+  function step(now){
+    for (const s of stars){
+      const base = -(s.d*.55 + .35)*SPEED*DPR;
+      s.vx += (base - s.vx)*.02; s.vy += (0 - s.vy)*.02;
+      s.x += s.vx; s.y += s.vy;
+      if (s.x < -4) s.x = W + 4;
+      if (s.x > W + 4) s.x = -4;
+      if (s.y < -4) s.y = H + 4;
+      if (s.y > H + 4) s.y = -4;
+    }
+    g.clearRect(0,0,W,H);
+    const t = now/1000;
+    for (const s of stars){
+      const a = [.22,.36,.52][s.d]*(0.6 + 0.4*Math.sin(t*s.tws + s.tw));
+      const r = (s.d+1)*.9*DPR;
+      g.fillStyle = "rgba(235,238,245,"+a.toFixed(3)+")";
+      g.fillRect(s.x - r/2, s.y - r/2, r, r);
+    }
+  }
+  let raf = 0;
+  function loop(now){ step(now); raf = document.hidden ? 0 : requestAnimationFrame(loop); }
+  resize(); seed();
+  addEventListener("resize", () => { resize(); seed(); });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && !raf) raf = requestAnimationFrame(loop);
+  });
+  raf = requestAnimationFrame(loop);
+})();
+
+/* ── the clock ───────────────────────────────────────────────────────────── */
+const $ = (id) => document.getElementById(id);
+const p2 = (n) => String(n).padStart(2,"0");
+const DAYS = ["SUNDAY","MONDAY","TUESDAY","WEDNESDAY","THURSDAY","FRIDAY","SATURDAY"];
+const MONS = ["JANUARY","FEBRUARY","MARCH","APRIL","MAY","JUNE","JULY",
+              "AUGUST","SEPTEMBER","OCTOBER","NOVEMBER","DECEMBER"];
+
+let lastSec = -1;
+function tick(){
+  const d = new Date();
+  const h = d.getHours(), m = d.getMinutes(), s = d.getSeconds();
+  $("hm").innerHTML = p2(h) + '<span class="colon">:</span>' + p2(m);
+  const ss = $("ss");
+  ss.textContent = p2(s);
+  if (s !== lastSec){
+    ss.classList.remove("tick"); void ss.offsetWidth; ss.classList.add("tick");
+    lastSec = s;
+  }
+  // per-minute sweep, driven off the real second (smooth enough, no drift)
+  $("sweepfill").style.width = ((s + d.getMilliseconds()/1000) / 60 * 100).toFixed(2) + "%";
+  // date
+  $("date").innerHTML = DAYS[d.getDay()] + " · " + p2(d.getDate()) + " " +
+    MONS[d.getMonth()] + " <b>" + d.getFullYear() + "</b>";
+  // timezone label, e.g. "EDT" from the offset
+  const off = -d.getTimezoneOffset()/60;
+  const sign = off >= 0 ? "+" : "-";
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "local";
+  $("tz").textContent = tz.replace(/_/g," ") + " " + sign + p2(Math.abs(off));
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+</body>
+</html>

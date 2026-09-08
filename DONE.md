@@ -23,3 +23,4 @@
 - 2026-09-07T12:36:10-04:00 | streak | STREAK — pre-calc drill trainer | cd /home/jack/lab/streak && sh run.sh  ->  http://127.0.0.1:8129/
 - 2026-09-07T15:57:47-04:00 | _kit | _kit | README.md
 - 2026-09-07T15:57:48-04:00 | rain | rain | cd /home/jack/lab/rain && sh run.sh → http://127.0.0.1:8121/
+- 2026-09-07T22:27:07-04:00 | receipt | receipt | see README

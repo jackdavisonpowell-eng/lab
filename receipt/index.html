@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>receipt — the word bureau</title>
+<style>
+/* receipt — standalone showpiece. Structure from _kit/base.css, inlined so the
+   file runs from GitHub Pages with zero requests. Colour is the subject's own:
+   warm near-black counter + aged thermal cream paper + soft-black ink + receipt-red. */
+:root{
+  --bg:#141310;            /* the counter */
+  --bg2:#1c1a15;           /* raised panel */
+  --ink:#f3efe6;           /* primary text on dark */
+  --muted:#8b8577;         /* faint labels on dark */
+  --line:#2c2a22;          /* hairline on dark */
+  --paper:#f6f1e7;         /* aged thermal paper */
+  --paper2:#efe8d8;        /* paper shadow edge */
+  --ink2:#20201d;          /* soft-black print on paper */
+  --ink2-faint:#5a564c;    /* faded print */
+  --red:#d64524;           /* receipt-red: prices, total, rare letters */
+  --red-deep:#a8321a;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+  --display:Georgia,"Times New Roman",serif;
+  --ls-tight:.06em; --ls-hud:.08em; --ls-label:.14em; --ls-word:.25em; --ls-mark:.35em;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  background:var(--bg);
+  color:var(--ink);
+  font-family:var(--mono);
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(1200px 600px at 78% -10%, rgba(214,69,36,.10), transparent 60%),
+    radial-gradient(900px 500px at 10% 110%, rgba(255,255,255,.04), transparent 60%);
+}
+
+/* ---- top header ---- */
+header{
+  display:flex;justify-content:space-between;align-items:flex-end;
+  border-bottom:1px solid var(--line);
+  padding:22px 34px 16px;
+}
+.wordmark{
+  font-size:22px;font-weight:700;letter-spacing:var(--ls-mark);
+  color:var(--ink);
+}
+.wordmark b{color:var(--red)}
+.wordmark small{display:block;color:var(--muted);letter-spacing:var(--ls-label);
+  font-size:11px;font-weight:400;margin-top:6px;text-transform:uppercase}
+.meta{font:11px/1.7 var(--mono);color:var(--muted);text-align:right;
+  letter-spacing:var(--ls-hud);text-transform:uppercase}
+.meta b{color:var(--ink);font-weight:400}
+
+/* ---- two columns: the machine (left) + the receipt (right) ---- */
+main{
+  display:grid;grid-template-columns:minmax(0,1fr) 460px;
+  gap:40px;align-items:start;
+  padding:34px 34px 60px;max-width:1560px;margin:0 auto;
+}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+
+/* the machine / counter */
+.machine{padding-top:6px}
+.eyebrow{font:11px/1 var(--mono);color:var(--red);letter-spacing:var(--ls-mark);
+  text-transform:uppercase;margin-bottom:14px}
+.biglabel{font-family:var(--display);font-style:italic;font-weight:700;
+  font-size:40px;line-height:1;color:var(--ink);margin-bottom:22px}
+.biglabel em{color:var(--red);font-style:italic}
+
+.field{
+  width:100%;background:var(--bg2);border:1px solid var(--line);
+  color:var(--ink);font-family:var(--mono);font-size:19px;
+  padding:18px 20px;letter-spacing:.02em;
+  clip-path:polygon(0 0,calc(100% - 16px) 0,100% 16px,100% 100%,16px 100%,0 calc(100% - 16px));
+  caret-color:var(--red);
+}
+.field::placeholder{color:var(--muted)}
+.field:focus{outline:none;border-color:var(--red);box-shadow:0 0 0 1px var(--red) inset}
+
+.readout{margin-top:30px}
+.due-label{font:11px/1 var(--mono);color:var(--muted);letter-spacing:var(--ls-mark);
+  text-transform:uppercase}
+.bignum{
+  font-family:var(--display);font-style:italic;font-weight:700;
+  font-size:96px;line-height:.85;color:var(--red);margin:6px 0 2px;
+  text-shadow:0 0 26px rgba(214,69,36,.28);
+}
+.due-sub{font:12px/1.7 var(--mono);color:var(--muted);letter-spacing:var(--ls-label);
+  text-transform:uppercase}
+.due-sub b{color:var(--ink);font-weight:400}
+.hint{margin-top:26px;font:11px/1.9 var(--mono);color:var(--muted);
+  letter-spacing:var(--ls-tight);max-width:44ch}
+.hint .r{color:var(--red)}
+
+/* ---- the thermal receipt ---- */
+.paper{
+  position:relative;background:var(--paper);color:var(--ink2);
+  font-family:var(--mono);
+  padding:30px 26px 40px;
+  box-shadow:0 18px 40px rgba(0,0,0,.5),0 2px 0 var(--paper2);
+  /* subtle thermal softness on all printed text */
+  filter:drop-shadow(0 0 .3px rgba(32,32,29,.5));
+}
+/* torn / perforated top + bottom edges */
+.paper::before,.paper::after{
+  content:"";position:absolute;left:0;right:0;height:10px;
+  background:
+    linear-gradient(45deg,transparent 33%,var(--paper) 33% 66%,transparent 66%) 0 0/14px 10px,
+    linear-gradient(-45deg,transparent 33%,var(--paper) 33% 66%,transparent 66%) 7px 0/14px 10px;
+}
+.paper::before{top:-9px}
+.paper::after{bottom:-9px;transform:scaleY(-1)}
+
+.r-head{text-align:center;margin-bottom:14px}
+.r-name{font-weight:700;font-size:17px;letter-spacing:.18em}
+.r-sub{font-size:10.5px;letter-spacing:.14em;color:var(--ink2-faint);
+  text-transform:uppercase;margin-top:5px}
+.r-addr{font-size:10.5px;letter-spacing:.05em;color:var(--ink2-faint);margin-top:9px;line-height:1.7}
+.r-rule{border:0;border-top:1px dashed var(--ink2-faint);margin:14px 0}
+.r-date{display:flex;justify-content:space-between;font-size:11px;
+  letter-spacing:.05em;color:var(--ink2-faint);margin-bottom:14px}
+.r-date b{color:var(--ink2);font-weight:700}
+
+/* itemized lines: word ... price, rare letters in red */
+.line{display:flex;align-items:baseline;gap:6px;font-size:14px;margin:3px 0}
+.line .word{white-space:nowrap;font-weight:700;letter-spacing:.03em}
+.line .word .r{color:var(--red)}
+.line .leader{flex:1;border-bottom:1px dotted var(--ink2-faint);
+  transform:translateY(-3px);min-width:12px}
+.line .amt{font-weight:700;white-space:nowrap;letter-spacing:.02em}
+.line .amt .r{color:var(--red)}
+.empty{font-size:12px;color:var(--ink2-faint);letter-spacing:.08em;
+  text-align:center;padding:18px 0;text-transform:uppercase}
+
+/* totals block */
+.totals{margin-top:14px}
+.trow{display:flex;justify-content:space-between;font-size:13px;margin:5px 0;
+  letter-spacing:.03em}
+.trow .k{color:var(--ink2-faint);text-transform:uppercase;font-size:11px;
+  letter-spacing:.1em}
+.trow .v{font-weight:700}
+.trow.tax .v{color:var(--red)}
+.trow.total{margin-top:10px;padding-top:10px;border-top:2px solid var(--ink2)}
+.trow.total .k{color:var(--ink2);font-size:13px;letter-spacing:.16em}
+.trow.total .v{font-size:22px;color:var(--red);letter-spacing:.02em}
+
+.r-foot{margin-top:18px;text-align:center;font-size:10.5px;
+  color:var(--ink2-faint);letter-spacing:.12em;text-transform:uppercase;line-height:1.9}
+.r-foot .bar{margin:10px auto 0;height:34px;width:180px;
+  background:repeating-linear-gradient(90deg,var(--ink2) 0 2px,transparent 2px 5px,
+    var(--ink2) 5px 6px,transparent 6px 9px,var(--ink2) 9px 12px,transparent 12px 14px,
+    var(--ink2) 14px 15px,transparent 15px 19px);
+  opacity:.85}
+.r-foot .code{margin-top:8px;letter-spacing:.35em;font-size:11px;color:var(--ink2)}
+
+/* print flash */
+@keyframes print{0%{transform:translateY(-6px);opacity:.4}100%{transform:none;opacity:1}}
+.paper.flash{animation:print .28s ease-out}
+
+.hud{position:fixed;left:14px;bottom:12px;font:12px/1.5 var(--mono);
+  color:var(--muted);letter-spacing:var(--ls-hud);text-transform:uppercase;
+  pointer-events:none}
+</style>
+</head>
+<body>
+<header>
+  <div class="wordmark">THE <b>WORD</b> BUREAU
+    <small>official pricing of your own language · counter 07</small>
+  </div>
+  <div class="meta">
+    <div>EST. 2026 · NO REFUNDS</div>
+    <div>SCRABBLE TARIFF SCHEDULE <b>REV. 1938</b></div>
+  </div>
+</header>
+
+<main>
+  <section class="machine">
+    <div class="eyebrow">enter your words</div>
+    <div class="biglabel">we bill you for <em>every letter</em></div>
+    <input id="words" class="field" type="text" spellcheck="false"
+      placeholder="hello world" aria-label="your words" value="hello world">
+    <div class="readout">
+      <div class="due-label">total due</div>
+      <div class="bignum" id="due">$0.00</div>
+      <div class="due-sub"><b id="nletters">0</b> letters billed · <b id="nrare">0</b> rare · 7% rarity surcharge</div>
+    </div>
+    <p class="hint">Every letter is priced at its Scrabble value. The <span class="r">red</span>
+      letters are the rare ones (J Q X Z, and the 4-point W K) — they are what push your
+      surcharge up. Type to reprint. The receipt follows you in real time.</p>
+  </section>
+
+  <section class="paper" id="paper" aria-live="polite">
+    <div class="r-head">
+      <div class="r-name">THE WORD BUREAU</div>
+      <div class="r-sub">pricing office · language dept.</div>
+      <div class="r-addr">1938 TARIFF ROW · LETTER &amp; DIGIT<br>OFFICIAL RECEIPT · KEEP FOR YOUR RECORDS</div>
+    </div>
+    <hr class="r-rule">
+    <div class="r-date"><span>DATE <b id="rdate">—</b></span><span>TERMINAL <b>07</b></span></div>
+    <div id="items"><div class="empty">— awaiting words —</div></div>
+    <hr class="r-rule">
+    <div class="totals">
+      <div class="trow"><span class="k">subtotal</span><span class="v" id="t-sub">$0.00</span></div>
+      <div class="trow tax"><span class="k">rarity surcharge 7%</span><span class="v" id="t-tax">$0.00</span></div>
+      <div class="trow total"><span class="k">total due</span><span class="v" id="t-total">$0.00</span></div>
+    </div>
+    <div class="r-foot">
+      <div>thank you · see us again</div>
+      <div class="bar"></div>
+      <div class="code" id="r-code">0000000000</div>
+    </div>
+  </section>
+</main>
+
+<div class="hud">receipt · the word bureau · single file · no backend</div>
+
+<script>
+(function(){
+  "use strict";
+  // Official Scrabble letter values (English, 100-tile distribution).
+  var VAL={A:1,B:3,C:3,D:2,E:1,F:4,G:2,H:4,I:1,J:8,K:5,L:1,M:3,N:1,O:1,P:3,Q:10,
+           R:1,S:1,T:1,U:1,V:4,W:4,X:8,Y:4,Z:10};
+  // "rare" = the letters that make a surcharge: 8/10-point, plus the 4/5-point premium set.
+  var RARE={J:1,Q:1,X:1,Z:1,W:1,K:1,V:1};
+  var TAX=0.07;
+
+  var $=function(id){return document.getElementById(id)};
+  var words=$("words");
+
+  function money(n){return "$"+n.toFixed(2);}
+  function esc(s){return s.replace(/[&<>"]/g,function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+
+  function render(){
+    var raw=words.value;
+    var toks=raw.split(/(\s+)/);                 // keep whitespace for alignment
+    var wordsList=raw.trim().split(/\s+/).filter(Boolean);
+    var letters=0, rare=0, base=0;
+    var html="";
+
+    if(wordsList.length===0){
+      html='<div class="empty">— awaiting words —</div>';
+    }else{
+      wordsList.forEach(function(w){
+        var wsum=0, wrare=0, out="";
+        for(var i=0;i<w.length;i++){
+          var c=w[i], u=c.toUpperCase();
+          var v=VAL[u]||0;
+          wsum+=v; letters++;
+          var isR = VAL[u] && RARE[u];
+          if(isR){rare++; wrare++;}
+          out += isR ? '<span class="r">'+esc(c.toUpperCase())+'</span>' : esc(c.toUpperCase());
+        }
+        base+=wsum;
+        html+='<div class="line"><span class="word">'+out+'</span>'+
+              '<span class="leader"></span>'+
+              '<span class="amt'+(wrare?' r':'')+'">'+money(wsum)+'</span></div>';
+      });
+    }
+
+    var tax=base*TAX;
+    var total=base+tax;
+
+    $("items").innerHTML=html;
+    $("t-sub").textContent=money(base);
+    $("t-tax").textContent=money(tax);
+    $("t-total").textContent=money(total);
+    $("due").textContent=money(total);
+    $("nletters").textContent=letters;
+    $("nrare").textContent=rare;
+
+    // receipt date + a per-receipt code derived from the text (deterministic, no data leaves the page)
+    var d=new Date();
+    var p=function(n){return (n<10?"0":"")+n;};
+    $("rdate").textContent=d.getFullYear()+"-"+p(d.getMonth()+1)+"-"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+    var h=0; for(var i=0;i<raw.length;i++){h=(h*31+raw.charCodeAt(i))>>>0;}
+    $("r-code").textContent=("0000000000"+h.toString(16).toUpperCase()).slice(-10);
+  }
+
+  var paper=$("paper");
+  var t;
+  words.addEventListener("input",function(){
+    render();
+    paper.classList.remove("flash"); void paper.offsetWidth; paper.classList.add("flash");
+    clearTimeout(t); t=setTimeout(function(){paper.classList.remove("flash");},300);
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
