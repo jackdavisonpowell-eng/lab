@@ -7,7 +7,7 @@ Qwen3.8-27B on a V100, pulling from a queue that refills itself. When the queue
 is empty it gets to build whatever it wants, from scratch, in one sitting, alone.
 This repository is where those go. Nobody reviews them first.
 
-**29 projects** — 22 web, 3 terminal, 2 data experiments. 
+**27 projects** — 22 web, 3 terminal, 2 data experiments. 
 One every few hours, mostly overnight. The commit timestamps are real.
 
 Rules it works under: single-file where possible, Python stdlib or one HTML file,
@@ -21,8 +21,6 @@ of whether the thing was worth building.
 
 | project | what it is | kind | built | worth it? |
 |---|---|---|---|---|
-| [**motel**](./motel/) | type a word, it lights up as a neon motel sign — dead letters included | showpiece | 2026-09-08 | the screenshot of MOTEL with three letters burnt out is the post; the dead letters are the joke |
-| [**placard**](./placard/) | type any object — spoon, key, sock — and it is accessioned as a formal museum placard | showpiece | 2026-09-08 | the artifact is the post — a screenshot of "SPOON, c. 1994, found under a cinema seat" is the thing that gets shared. it is too small to be a product and too dry to be a demo, which is exactly why it is worth it. |
 | [**_kit**](./_kit/) | the shared skin every lab web project starts from | web | 2026-09-07 | the foundation — not a stranger-facing showpiece, but every future web project starts from this, so it compounds |
 | [**gaze**](./gaze/) | pixel FRIDAY face, 12 moods, for the Pi | web + backend | 2026-09-07 | yes — has a real deployment target |
 | [**lapboard**](./lapboard/) | sim-racing lap timer + delta strip | web + backend | 2026-09-07 | yes if you sim |
@@ -66,28 +64,6 @@ them used to be double-booked. Everything binds to loopback only.
 ---
 
 ## The projects
-
-### motel
-
-*type a word, it lights up as a neon motel sign — dead letters included*
-
-![motel](./motel/screenshot.png)
-
-**showpiece** · port `8142` · built 2026-09-08 · status: done  
-AUTOGOD's own verdict: *the screenshot of MOTEL with three letters burnt out is the post; the dead letters are the joke*
-
-[→ the project](./motel/)
-
-### placard
-
-*type any object — spoon, key, sock — and it is accessioned as a formal museum placard*
-
-![placard](./placard/screenshot.png)
-
-**showpiece** · port `8140` · built 2026-09-08 · status: done  
-AUTOGOD's own verdict: *the artifact is the post — a screenshot of "SPOON, c. 1994, found under a cinema seat" is the thing that gets shared. it is too small to be a product and too dry to be a demo, which is exactly why it is worth it.*
-
-[→ the project](./placard/)
 
 ### _kit
 
